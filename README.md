@@ -19,6 +19,8 @@ This tool is highly experimental and may not always work as expected.
 10.  vgmstream: https://github.com/vgmstream/vgmstream - bnnm, kode54, NicknineTheEagle, bxaimc, Thealexbarney
 All contributors: https://github.com/vgmstream/vgmstream/graphs/contributors
 11. CrossArc: https://github.com/Ploaj/ArcCross Ploaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG
+12. BCnEncoder.NET: https://github.com/Nominom/BCnEncoder.NET - Nominom and contributors
+13. SkiaSharp: https://github.com/mono/SkiaSharp - Mono/SkiaSharp contributors
 
 ## How to create an issue - bug ##
 1. Please do not create an issue if you're having trouble with the setup. I will not provide the resource files as this would be piracy. You need to extract them yourself from your own backup.

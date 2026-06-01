@@ -101,6 +101,40 @@ namespace Sma5hMusic.GUI.Dialogs
             return null;
         }
 
+        public async Task<string> OpenFileDialogImageSingle(Window parent = null)
+        {
+            _logger.LogDebug("Opening Image FileDialog...");
+
+            _openFileDialog.AllowMultiple = false;
+            _openFileDialog.Directory = _savedDirectory;
+            _openFileDialog.Filters = new List<FileDialogFilter>()
+            {
+                new FileDialogFilter()
+                {
+                    Extensions = new List<string>()
+                    {
+                        "png", "bntx"
+                    },
+                    Name = "Series Icons"
+                }
+            };
+            _openFileDialog.Title = "Load Series Icon";
+
+            string[] results;
+            if (parent == null)
+                results = await _openFileDialog.ShowAsync(_rootDialogWindow.Window);
+            else
+                results = await _openFileDialog.ShowAsync(parent);
+
+            if (results.Length > 0)
+            {
+                _savedDirectory = Path.GetDirectoryName(results[0]);
+                return results[0];
+            }
+
+            return null;
+        }
+
         public async Task<string> SaveFileCSVDialog(Window parent = null)
         {
             _logger.LogDebug("Opening SaveDialog...");

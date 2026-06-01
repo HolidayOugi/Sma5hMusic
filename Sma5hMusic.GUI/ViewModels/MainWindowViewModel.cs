@@ -361,7 +361,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 "bgm-property: https://github.com/jam1garner/smash-bgm-property \r\njam1garner \r\n\r\n" +
                 "VGAudio: https://github.com/Thealexbarney/VGAudio \r\nThealexbarney, soneek, jam1garner, devlead, Raytwo, nnn1590\r\n\r\n" +
                 "vgmstream: https://github.com/vgmstream/vgmstream \r\nbnnm, kode54, NicknineTheEagle, bxaimc, Thealexbarney\r\nAll contributors: https://github.com/vgmstream/vgmstream/graphs/contributors \r\n\r\n" +
-                "CrossArc: https://github.com/Ploaj/ArcCross \r\nPloaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG\r\n\r\n");
+                "CrossArc: https://github.com/Ploaj/ArcCross \r\nPloaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG\r\n\r\n" +
+                "BCnEncoder.NET: https://github.com/Nominom/BCnEncoder.NET \r\nNominom and contributors\r\n\r\n" +
+                "SkiaSharp: https://github.com/mono/SkiaSharp \r\nMono/SkiaSharp contributors\r\n\r\n");
         }
 
         public void OnWikiOpen()

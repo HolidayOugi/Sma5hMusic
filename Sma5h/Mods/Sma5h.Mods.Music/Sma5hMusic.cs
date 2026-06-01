@@ -121,7 +121,36 @@ namespace Sma5h.Mods.Music
                     _logger.LogError("Error! The song with ToneId {NameId}, File {Filename} could not be processed.", bgmPropertyEntry.NameId, bgmPropertyEntry.Filename);
             }
 
+            CopySeriesIcons();
             return true;
+        }
+
+        private void CopySeriesIcons()
+        {
+            var iconFolder = GetMusicIconsFolder();
+            if (!Directory.Exists(iconFolder))
+                return;
+
+            var outputFolder = Path.Combine(_config.CurrentValue.OutputPath, "ui", "replace", "series", "series_0");
+            Directory.CreateDirectory(outputFolder);
+
+            foreach (var iconFile in Directory.GetFiles(iconFolder, "*.bntx", SearchOption.TopDirectoryOnly))
+            {
+                var outputFile = Path.Combine(outputFolder, Path.GetFileName(iconFile));
+                File.Copy(iconFile, outputFile, true);
+                _logger.LogInformation("Copied series icon {IconFile} to {OutputFile}", iconFile, outputFile);
+            }
+        }
+
+        private string GetMusicIconsFolder()
+        {
+            var modPath = _config.CurrentValue.Sma5hMusic.ModPath;
+            var fullModPath = Path.GetFullPath(modPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+            var modsFolder = Path.GetDirectoryName(fullModPath);
+            if (string.IsNullOrEmpty(modsFolder))
+                modsFolder = Path.GetFullPath("Mods");
+
+            return Path.Combine(modsFolder, "MusicIcons");
         }
 
         private bool ConvertNus3Audio(bool useCache, BgmPropertyEntry bgmPropertyEntry, string nusAudioOutputFile)

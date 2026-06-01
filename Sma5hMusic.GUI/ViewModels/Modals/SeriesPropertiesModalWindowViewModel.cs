@@ -5,6 +5,8 @@ using Microsoft.Extensions.Options;
 using ReactiveUI;
 using ReactiveUI.Fody.Helpers;
 using ReactiveUI.Validation.Extensions;
+using Avalonia.Controls;
+using Avalonia.Media.Imaging;
 using Sma5h.Helpers;
 using Sma5h.Mods.Music;
 using Sma5h.Mods.Music.Helpers;
@@ -16,7 +18,9 @@ using Sma5hMusic.GUI.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -33,10 +37,14 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly ILogger _logger;
         private readonly IGUIStateManager _guiStateManager;
         private readonly IViewModelManager _viewModelManager;
+        private readonly IFileDialog _fileDialog;
+        private readonly ISeriesIconService _seriesIconService;
+        private string _selectedIconPath;
 
         public IMusicMod ModManager { get; }
 
         public MSBTFieldViewModel MSBTTitleEditor { get; set; }
+        public ReactiveCommand<object, Unit> ActionChooseIcon { get; }
 
         [Reactive]
         public string UiSeriesId { get; set; }
@@ -71,15 +79,26 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public bool IsInSoundTest { get; set; }
 
+        [Reactive]
+        public string IconPath { get; set; }
+
+        [Reactive]
+        public Bitmap IconPreview { get; set; }
+
+        [Reactive]
+        public bool HasIconPreview { get; set; }
+
         public ReadOnlyObservableCollection<SeriesEntryViewModel> Series { get { return _series; } }
 
         public SeriesPropertiesModalWindowViewModel(IOptionsMonitor<ApplicationSettings> config, ILogger<SeriesPropertiesModalWindowViewModel> logger, IViewModelManager viewModelManager,
-            IGUIStateManager guiStateManager)
+            IGUIStateManager guiStateManager, IFileDialog fileDialog, ISeriesIconService seriesIconService)
         {
             _config = config;
             _logger = logger;
             _guiStateManager = guiStateManager;
             _viewModelManager = viewModelManager;
+            _fileDialog = fileDialog;
+            _seriesIconService = seriesIconService;
 
             //Bind observables
             viewModelManager.ObservableSeries.Connect()
@@ -119,7 +138,23 @@ namespace Sma5hMusic.GUI.ViewModels
                 p => !string.IsNullOrEmpty(p),
                 $"Please give a title to your series (in at least one language).");
 
+            ActionChooseIcon = ReactiveCommand.CreateFromTask<object>(OnChooseIcon);
             this.WhenAnyValue(p => p.MSBTTitleEditor.CurrentLocalizedValue).Subscribe((o) => { FormatSeriesId(o); });
+        }
+
+        private async Task OnChooseIcon(object parent)
+        {
+            var iconPath = await _fileDialog.OpenFileDialogImageSingle(parent as Window);
+            if (string.IsNullOrEmpty(iconPath))
+                return;
+
+            _selectedIconPath = iconPath;
+            IconPath = iconPath;
+
+            if (Path.GetExtension(iconPath).Equals(".bntx", StringComparison.OrdinalIgnoreCase))
+                SetIconPreview(_seriesIconService.CreatePreviewFromBntxFile(iconPath));
+            else
+                SetIconPreview(iconPath);
         }
 
         private void FormatSeriesId(string seriesId)
@@ -163,7 +198,36 @@ namespace Sma5hMusic.GUI.ViewModels
             _refSelectedItem.DlcCharaId = DlcCharaId;
             _refSelectedItem.IsUseAmiiboBg = IsUseAmiiboBg;
 
+            if (!string.IsNullOrEmpty(_selectedIconPath))
+            {
+                IconPath = _seriesIconService.SaveIcon(_selectedIconPath, UiSeriesId);
+                SetIconPreview(_seriesIconService.CreatePreviewFromBntx(UiSeriesId));
+            }
+
             return true;
+        }
+
+        private void SetIconPreview(string imagePath)
+        {
+            if (string.IsNullOrEmpty(imagePath) || !File.Exists(imagePath))
+            {
+                IconPreview = null;
+                HasIconPreview = false;
+                return;
+            }
+
+            try
+            {
+                using var stream = File.OpenRead(imagePath);
+                IconPreview = new Bitmap(stream);
+                HasIconPreview = true;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Could not load series icon preview from {IconPath}", imagePath);
+                IconPreview = null;
+                HasIconPreview = false;
+            }
         }
 
         private Dictionary<string, string> SaveMSBTValues(Dictionary<string, string> msbtValues)
@@ -201,6 +265,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 IsPatch = false;
                 DlcCharaId = string.Empty;
                 IsUseAmiiboBg = false;
+                IconPath = string.Empty;
+                SetIconPreview(null);
+                _selectedIconPath = null;
                 MSBTTitleEditor.MSBTValues = new Dictionary<string, string>();
             }
             else
@@ -216,6 +283,10 @@ namespace Sma5hMusic.GUI.ViewModels
                 IsPatch = item.IsPatch;
                 DlcCharaId = item.DlcCharaId;
                 IsUseAmiiboBg = item.IsUseAmiiboBg;
+                var iconPath = _seriesIconService.GetIconPath(item.UiSeriesId);
+                IconPath = File.Exists(iconPath) ? iconPath : string.Empty;
+                SetIconPreview(File.Exists(iconPath) ? _seriesIconService.CreatePreviewFromBntx(item.UiSeriesId) : null);
+                _selectedIconPath = null;
                 MSBTTitleEditor.MSBTValues = item.MSBTTitle;
             }
         }

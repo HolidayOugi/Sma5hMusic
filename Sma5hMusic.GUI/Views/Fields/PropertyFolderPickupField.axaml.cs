@@ -9,13 +9,13 @@ namespace Sma5hMusic.GUI.Views.Fields
         private ICommand _command;
         private readonly bool _commandCanExecute = true;
 
-        public static readonly StyledProperty<string> ButtonParameterProperty = AvaloniaProperty.Register<PropertyFolderPickupField, string>(nameof(CommandParameter), inherits: true, defaultBindingMode: Avalonia.Data.BindingMode.OneWay);
+        public static readonly StyledProperty<object> ButtonParameterProperty = AvaloniaProperty.Register<PropertyFolderPickupField, object>(nameof(CommandParameter), inherits: true, defaultBindingMode: Avalonia.Data.BindingMode.OneWay);
 
         public static readonly DirectProperty<PropertyFolderPickupField, ICommand> CommandProperty = AvaloniaProperty.RegisterDirect<PropertyFolderPickupField, ICommand>(nameof(Command), button => button.Command, (button, command) => button.Command = command, enableDataValidation: true);
 
         protected override bool IsEnabledCore => base.IsEnabledCore && _commandCanExecute;
 
-        public string CommandParameter
+        public object CommandParameter
         {
             get { return GetValue(ButtonParameterProperty); }
             set { SetValue(ButtonParameterProperty, value); }

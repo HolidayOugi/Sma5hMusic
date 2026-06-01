@@ -188,14 +188,15 @@ namespace Sma5hMusic.GUI.Dialogs
 
                 //Reset
                 var existingFiles = Directory.GetFiles(_config.CurrentValue.OutputPath, "*", SearchOption.AllDirectories);
-                if (existingFiles.Length > 0)
+                var existingDirectories = Directory.GetDirectories(_config.CurrentValue.OutputPath, "*", SearchOption.AllDirectories);
+                if (existingFiles.Length > 0 || existingDirectories.Length > 0)
                 {
                     if (!_config.CurrentValue.SkipOutputPathCleanupConfirmation)
                     {
                         _logger.LogWarning("Files found in the workspace folder.");
                         if (await _messageDialog.ShowWarningConfirm("Clean Output folder?", $"Your folder {_config.CurrentValue.OutputPath} must be empty before building the mod.\r\nProceed?"))
                         {
-                            CleaningWorkspaceFolder(existingFiles);
+                            ClearOutputFolder();
                         }
                         else
                         {
@@ -204,7 +205,7 @@ namespace Sma5hMusic.GUI.Dialogs
                     }
                     else
                     {
-                        CleaningWorkspaceFolder(existingFiles);
+                        ClearOutputFolder();
                     }
                 }
             }
@@ -219,20 +220,14 @@ namespace Sma5hMusic.GUI.Dialogs
             return true;
         }
 
-        private void CleaningWorkspaceFolder(string[] existingFiles)
+        private void ClearOutputFolder()
         {
             _logger.LogInformation("Cleaning up workspace folder");
-            foreach (var fileToDelete in existingFiles)
-            {
-                if (IsWorkspaceFile(fileToDelete))
-                    File.Delete(fileToDelete);
-            }
-        }
+            foreach (var fileToDelete in Directory.GetFiles(_config.CurrentValue.OutputPath, "*", SearchOption.TopDirectoryOnly))
+                File.Delete(fileToDelete);
 
-        private bool IsWorkspaceFile(string filename)
-        {
-            var file = Path.GetFileName(filename).ToLower();
-            return file.EndsWith("msbt") || file.EndsWith("nus3audio") || file.EndsWith("nus3bank") || file.EndsWith("prc") || file == "bgm_property.bin";
+            foreach (var directoryToDelete in Directory.GetDirectories(_config.CurrentValue.OutputPath, "*", SearchOption.TopDirectoryOnly))
+                Directory.Delete(directoryToDelete, true);
         }
 
         private async Task ShowBuildPreCheckFailedError(string message)
@@ -260,6 +255,7 @@ namespace Sma5hMusic.GUI.Dialogs
             var requiredFiles = new List<string>()
             {
                 Path.Combine(config.ResourcesPath, "template.nus3bank"),
+                Path.Combine(config.ResourcesPath, "series_icon_template.bntx"),
                 Path.Combine(config.ResourcesPath, "ParamLabels.csv"),
                 Path.Combine(config.ResourcesPath, "nusbank_ids.csv"),
                 Path.Combine(config.GameResourcesPath, "sound", "config", "bgm_property.bin"),
