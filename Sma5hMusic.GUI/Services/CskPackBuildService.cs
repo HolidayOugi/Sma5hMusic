@@ -2494,6 +2494,8 @@ namespace Sma5hMusic.GUI.Services
             if (string.IsNullOrWhiteSpace(text))
                 text = "unnamed";
 
+            text = text.Replace("Pokémon", "Pokemon");
+
             var invalidChars = new HashSet<char>(new[]
             {
                 '<', '>', ':', '\"', '/', '\\', '|', '?', '*'
