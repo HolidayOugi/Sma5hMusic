@@ -705,9 +705,14 @@ namespace Sma5hMusic.GUI.Services
 
         private void GenerateCskPacks(IEnumerable<CskModContext> contexts, string generatedBgmFolder, string outputRoot, HashSet<string> selectedSeriesKeys, CskBuildResources buildResources)
         {
+            var allSeries = contexts.SelectMany(context => context.SeriesList).ToList();
+            var etcSelected = contexts.Any(context => context.SeriesList
+                .Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series)))
+                .Any(IsEtcSeries));
             var seriesSoundOrder = BuildSeriesSoundOrder(
-                contexts.SelectMany(context => context.SeriesList),
-                buildResources.OrderOverride);
+                allSeries,
+                buildResources.OrderOverride,
+                etcSelected);
 
             foreach (var context in contexts)
             {
@@ -737,7 +742,7 @@ namespace Sma5hMusic.GUI.Services
             }
         }
 
-        private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride)
+        private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride, bool etcSelected)
         {
             var allSeries = seriesList.ToList();
             var seriesOrder = BuildSeriesSoundOrderFromAudioState(orderOverride);
@@ -756,6 +761,9 @@ namespace Sma5hMusic.GUI.Services
 
             foreach (var fallbackOrder in metadataOrder)
                 SetSeriesOrderKey(seriesOrder, fallbackOrder.Key, fallbackOrder.Value);
+
+            if (!etcSelected)
+                ApplyEtcSoundOrderAnchor(allSeries, orderOverride, seriesOrder);
 
             return seriesOrder;
         }
@@ -877,6 +885,124 @@ namespace Sma5hMusic.GUI.Services
                 .ToDictionary(p => p.Key, p => p.First().Order, StringComparer.OrdinalIgnoreCase);
         }
 
+        private void ApplyEtcSoundOrderAnchor(List<JObject> allSeries, JObject orderOverride, Dictionary<string, int> seriesOrder)
+        {
+            var etcSoundOrder = GetEtcDispOrderSound();
+            var etcMinTestOrder = GetEtcMinTestDispOrder(orderOverride);
+            if (!etcSoundOrder.HasValue || !etcMinTestOrder.HasValue)
+                return;
+
+            var afterEtcSeries = allSeries
+                .Where(p => !IsEtcSeries(p) && !VanillaSeries.Contains(GetString(p, "name_id")))
+                .Select(p => new
+                {
+                    Series = p,
+                    Key = GetSeriesIdentity(p),
+                    MinTestOrder = GetSeriesMinTestDispOrder(p, orderOverride)
+                })
+                .Where(p => !string.IsNullOrEmpty(p.Key) &&
+                            p.MinTestOrder.HasValue &&
+                            p.MinTestOrder.Value > etcMinTestOrder.Value)
+                .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
+                .Select(p => p.OrderBy(x => x.MinTestOrder.Value).First())
+                .OrderBy(p => p.MinTestOrder.Value)
+                .ThenBy(p => GetSeriesDisplayName(p.Series), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            var nextOrder = etcSoundOrder.Value + 1;
+            foreach (var series in afterEtcSeries)
+            {
+                SetSeriesOrderKeyOverride(seriesOrder, GetString(series.Series, "name_id"), nextOrder);
+                SetSeriesOrderKeyOverride(seriesOrder, GetString(series.Series, "ui_series_id"), nextOrder);
+
+                if (nextOrder < sbyte.MaxValue)
+                    nextOrder++;
+            }
+        }
+
+        private int? GetEtcDispOrderSound()
+        {
+            return _audioStateService.GetSeriesEntries()
+                .Where(p => p.DispOrderSound > -1 && IsEtcSeries(p.NameId, p.UiSeriesId))
+                .OrderBy(p => p.Source == EntrySource.Core ? 0 : 1)
+                .Select(p => (int?)p.DispOrderSound)
+                .FirstOrDefault();
+        }
+
+        private int? GetEtcMinTestDispOrder(JObject orderOverride)
+        {
+            var etcSeriesIds = _audioStateService.GetSeriesEntries()
+                .Where(p => IsEtcSeries(p.NameId, p.UiSeriesId))
+                .Select(p => p.UiSeriesId)
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            etcSeriesIds.Add("ui_series_etc");
+
+            var gameSeriesById = _audioStateService.GetGameTitleEntries()
+                .Where(p => !string.IsNullOrEmpty(p.UiGameTitleId) && !string.IsNullOrEmpty(p.UiSeriesId))
+                .GroupBy(p => p.UiGameTitleId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(p => p.Key, p => p.First().UiSeriesId, StringComparer.OrdinalIgnoreCase);
+
+            int? minOrder = null;
+            foreach (var bgm in _audioStateService.GetBgmDbRootEntries())
+            {
+                if (string.IsNullOrEmpty(bgm.UiGameTitleId) ||
+                    !gameSeriesById.TryGetValue(bgm.UiGameTitleId, out var uiSeriesId) ||
+                    !etcSeriesIds.Contains(uiSeriesId))
+                    continue;
+
+                var order = GetInt(orderOverride, bgm.UiBgmId, bgm.TestDispOrder);
+                if (order < 0)
+                    continue;
+
+                if (!minOrder.HasValue || order < minOrder.Value)
+                    minOrder = order;
+            }
+
+            return minOrder;
+        }
+
+        private static int? GetSeriesMinTestDispOrder(JObject series, JObject orderOverride)
+        {
+            int? minOrder = null;
+            foreach (JObject game in GetArray(series, "games"))
+            {
+                foreach (JObject bgm in GetArray(game, "bgms"))
+                {
+                    var dbRoot = bgm["db_root"] as JObject;
+                    var uiBgmId = GetString(dbRoot, "ui_bgm_id");
+                    if (string.IsNullOrEmpty(uiBgmId))
+                        continue;
+
+                    var order = GetInt(orderOverride, uiBgmId, GetInt(dbRoot, "test_disp_order", -1));
+                    if (order < 0)
+                        continue;
+
+                    if (!minOrder.HasValue || order < minOrder.Value)
+                        minOrder = order;
+                }
+            }
+
+            return minOrder;
+        }
+
+        private static string GetSeriesIdentity(JObject series)
+        {
+            var uiSeriesId = GetString(series, "ui_series_id");
+            return !string.IsNullOrEmpty(uiSeriesId) ? uiSeriesId : GetString(series, "name_id");
+        }
+
+        private static bool IsEtcSeries(JObject series)
+        {
+            return IsEtcSeries(GetString(series, "name_id"), GetString(series, "ui_series_id"));
+        }
+
+        private static bool IsEtcSeries(string nameId, string uiSeriesId)
+        {
+            return string.Equals(uiSeriesId, "ui_series_etc", StringComparison.OrdinalIgnoreCase) ||
+                   (!string.IsNullOrEmpty(nameId) && nameId.StartsWith("etc", StringComparison.OrdinalIgnoreCase));
+        }
+
         private static int GetSeriesSoundOrder(Dictionary<string, int> seriesSoundOrder, JObject series)
         {
             var uiSeriesId = GetString(series, "ui_series_id");
@@ -893,6 +1019,14 @@ namespace Sma5hMusic.GUI.Services
         private static void SetSeriesOrderKey(Dictionary<string, int> seriesOrder, string key, int value)
         {
             if (string.IsNullOrEmpty(key) || seriesOrder.ContainsKey(key))
+                return;
+
+            seriesOrder[key] = value;
+        }
+
+        private static void SetSeriesOrderKeyOverride(Dictionary<string, int> seriesOrder, string key, int value)
+        {
+            if (string.IsNullOrEmpty(key))
                 return;
 
             seriesOrder[key] = value;
