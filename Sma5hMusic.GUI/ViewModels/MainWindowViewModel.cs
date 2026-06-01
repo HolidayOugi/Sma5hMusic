@@ -261,14 +261,33 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public async Task OnBuildCskPacks()
         {
-            IsLoading = true;
-            IsShowingDebug = true;
-            await _musicPlayer.Stop();
-            _logger.LogInformation("Building CSK packs. Generating only nus3audio/nus3bank files and CSK pack folders.");
-
+            var buildStarted = false;
             try
             {
-                await _cskPackBuildService.Build();
+                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
+                if (availableSeries.Count == 0)
+                {
+                    await _messageDialog.ShowError("CSK packs build failed", "No series were found in the currently loaded music mods.");
+                    return;
+                }
+
+                var pickerViewModel = new CskPackSeriesPickerModalWindowViewModel(availableSeries);
+                var pickerWindow = new CskPackSeriesPickerModalWindow { DataContext = pickerViewModel };
+                var pickerResult = await pickerWindow.ShowDialog<CskPackSeriesPickerModalWindow>(_rootDialog.Window);
+                if (pickerResult == null)
+                    return;
+
+                var selectedSeriesKeys = pickerViewModel.GetSelectedSeriesKeys().ToList();
+                if (selectedSeriesKeys.Count == 0)
+                    return;
+
+                IsLoading = true;
+                IsShowingDebug = true;
+                buildStarted = true;
+                await _musicPlayer.Stop();
+                _logger.LogInformation("Building CSK packs for {SelectedSeriesCount} selected series. Generating only selected nus3audio/nus3bank files and CSK pack folders.", selectedSeriesKeys.Count);
+
+                await _cskPackBuildService.Build(selectedSeriesKeys);
                 await _messageDialog.ShowInformation("Complete", "CSK packs build complete.");
             }
             catch (Exception e)
@@ -277,8 +296,11 @@ namespace Sma5hMusic.GUI.ViewModels
             }
             finally
             {
-                IsLoading = false;
-                IsShowingDebug = false;
+                if (buildStarted)
+                {
+                    IsLoading = false;
+                    IsShowingDebug = false;
+                }
             }
         }
 

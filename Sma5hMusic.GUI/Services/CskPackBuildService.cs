@@ -7,8 +7,10 @@ using Sma5h.Mods.Music.Helpers;
 using Sma5h.Mods.Music.Interfaces;
 using Sma5h.Mods.Music.Models;
 using Sma5hMusic.GUI.Interfaces;
+using Sma5hMusic.GUI.Models;
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -45,31 +47,143 @@ namespace Sma5hMusic.GUI.Services
 
         public Task Build()
         {
-            return Task.Run(BuildInternal);
+            return Task.Run(() => BuildInternal(null));
         }
 
-        private void BuildInternal()
+        public Task Build(IEnumerable<string> selectedSeriesKeys)
         {
-            var mods = _musicModManagerService.MusicMods.ToList();
-            if (mods.Count == 0)
-                mods = _musicModManagerService.RefreshMusicMods().ToList();
+            var selected = new HashSet<string>(selectedSeriesKeys ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            if (selected.Count == 0)
+                throw new InvalidOperationException("No CSK pack series were selected.");
 
+            return Task.Run(() => BuildInternal(selected));
+        }
+
+        public Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries()
+        {
+            return Task.Run<IReadOnlyList<CskPackSeriesOption>>(() =>
+            {
+                var contexts = LoadModContexts(GetMusicMods());
+                return contexts
+                    .SelectMany(context => context.SeriesList.Select(series => CreateSeriesOption(context, series)))
+                    .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+                    .ThenBy(p => p.ModName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+            });
+        }
+
+        private void BuildInternal(HashSet<string> selectedSeriesKeys)
+        {
+            var mods = GetMusicMods();
             if (mods.Count == 0)
                 throw new InvalidOperationException("No music mods were found.");
 
+            var contexts = LoadModContexts(mods);
+            if (contexts.Count == 0)
+                throw new InvalidOperationException("No metadata_mod.json files were found in the currently loaded music mods.");
+
+            if (selectedSeriesKeys == null)
+            {
+                selectedSeriesKeys = contexts
+                    .SelectMany(context => context.SeriesList.Select(series => CreateSeriesKey(context.Mod, series)))
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            }
+
+            if (selectedSeriesKeys.Count == 0)
+                throw new InvalidOperationException("No CSK pack series were selected.");
+
+            var buildResources = LoadBuildResources();
             var outputRoot = PrepareOutputRoot();
             var tempRoot = Path.Combine(outputRoot, CskTempFolder);
 
             try
             {
-                var generatedBgmFolder = GenerateBgmFiles(mods, tempRoot);
-                GenerateCskPacks(mods, generatedBgmFolder, outputRoot);
+                var generatedBgmFolder = GenerateBgmFiles(contexts, tempRoot, selectedSeriesKeys, buildResources.CoreGameOverride);
+                GenerateCskPacks(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
             }
             finally
             {
                 if (Directory.Exists(tempRoot))
                     Directory.Delete(tempRoot, true);
             }
+        }
+
+        private List<IMusicMod> GetMusicMods()
+        {
+            var mods = _musicModManagerService.MusicMods.ToList();
+            if (mods.Count == 0)
+                mods = _musicModManagerService.RefreshMusicMods().ToList();
+            return mods;
+        }
+
+        private List<CskModContext> LoadModContexts(IEnumerable<IMusicMod> mods)
+        {
+            var contexts = new List<CskModContext>();
+
+            foreach (var mod in mods)
+            {
+                var metadataPath = Path.Combine(mod.ModPath, MusicConstants.MusicModFiles.MUSIC_MOD_METADATA_JSON_FILE);
+                if (!File.Exists(metadataPath))
+                    continue;
+
+                var metadata = JObject.Parse(File.ReadAllText(metadataPath));
+                var packName = GetString(metadata, "name", mod.Name);
+                var seriesList = GetArray(metadata, "series").Cast<JObject>().ToList();
+
+                contexts.Add(new CskModContext
+                {
+                    Mod = mod,
+                    MetadataPath = metadataPath,
+                    Metadata = metadata,
+                    PackName = packName,
+                    SafePackName = SanitizePathSegment(packName, mod.Name, "pack folder name"),
+                    SeriesList = seriesList,
+                    SeriesIdToName = seriesList
+                        .Where(p => !string.IsNullOrEmpty(GetString(p, "ui_series_id")) && !string.IsNullOrEmpty(GetString(p, "name_id")))
+                        .GroupBy(p => GetString(p, "ui_series_id"), StringComparer.OrdinalIgnoreCase)
+                        .ToDictionary(p => p.Key, p => GetString(p.First(), "name_id"), StringComparer.OrdinalIgnoreCase)
+                });
+            }
+
+            return contexts;
+        }
+
+        private CskPackSeriesOption CreateSeriesOption(CskModContext context, JObject series)
+        {
+            return new CskPackSeriesOption
+            {
+                Key = CreateSeriesKey(context.Mod, series),
+                DisplayName = GetSeriesDisplayName(series),
+                NameId = GetString(series, "name_id"),
+                UiSeriesId = GetString(series, "ui_series_id"),
+                ModName = context.Mod.Name
+            };
+        }
+
+        private static string CreateSeriesKey(IMusicMod mod, JObject series)
+        {
+            return $"{Path.GetFullPath(mod.ModPath)}|{GetString(series, "ui_series_id")}|{GetString(series, "name_id")}";
+        }
+
+        private CskBuildResources LoadBuildResources()
+        {
+            var resourcesPath = _config.CurrentValue.ResourcesPath;
+            var overridePath = _config.CurrentValue.Sma5hMusicOverride.ModPath;
+            var coreBgmRows = ReadCoreBgmCsv(Path.Combine(resourcesPath, CoreBgmCsv));
+
+            return new CskBuildResources
+            {
+                CoreBgmRows = coreBgmRows,
+                VanillaGames = ReadVanillaGamesCsv(Path.Combine(resourcesPath, VanillaGamesCsv)),
+                ToneToSeriesMap = coreBgmRows.ToDictionary(p => $"ui_bgm_{p.ToneId}", p => p.Series, StringComparer.OrdinalIgnoreCase),
+                CoreToneIds = coreBgmRows.Select(p => $"ui_bgm_{p.ToneId}").ToHashSet(StringComparer.OrdinalIgnoreCase),
+                PlaylistOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_PLAYLIST_JSON_FILE)) ?? new JObject(),
+                OrderOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_ORDER_JSON_FILE)),
+                CoreBgmOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_BGM_JSON_FILE)),
+                CoreGameOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_GAME_JSON_FILE)),
+                CoreSeriesOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_SERIES_JSON_FILE)),
+                StageOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_STAGE_JSON_FILE))
+            };
         }
 
         private string PrepareOutputRoot()
@@ -98,7 +212,7 @@ namespace Sma5hMusic.GUI.Services
                 Directory.Delete(directory, true);
         }
 
-        private string GenerateBgmFiles(IEnumerable<IMusicMod> mods, string tempRoot)
+        private string GenerateBgmFiles(IEnumerable<CskModContext> contexts, string tempRoot, HashSet<string> selectedSeriesKeys, JObject coreGameOverride)
         {
             ClearDirectory(tempRoot);
 
@@ -107,8 +221,9 @@ namespace Sma5hMusic.GUI.Services
 
             _nus3AudioService.ResetGeneratedNus3BankIds();
 
-            var bgmEntries = mods
-                .SelectMany(m => m.GetMusicModEntries().BgmPropertyEntries)
+            var bgmEntries = contexts
+                .SelectMany(context => GetSelectedBgmBuildEntries(context, selectedSeriesKeys, coreGameOverride))
+                .Where(p => !string.IsNullOrEmpty(p.NameId) && !string.IsNullOrEmpty(p.Filename))
                 .GroupBy(p => p.NameId, StringComparer.OrdinalIgnoreCase)
                 .Select(p => p.First())
                 .ToList();
@@ -134,60 +249,65 @@ namespace Sma5hMusic.GUI.Services
             return outputBgmFolder;
         }
 
-        private void GenerateCskPacks(IEnumerable<IMusicMod> mods, string generatedBgmFolder, string outputRoot)
+        private IEnumerable<BgmBuildEntry> GetSelectedBgmBuildEntries(CskModContext context, HashSet<string> selectedSeriesKeys, JObject coreGameOverride)
         {
-            var resourcesPath = _config.CurrentValue.ResourcesPath;
-            var coreBgmRows = ReadCoreBgmCsv(Path.Combine(resourcesPath, CoreBgmCsv));
-            var vanillaGames = ReadVanillaGamesCsv(Path.Combine(resourcesPath, VanillaGamesCsv));
-            var toneToSeriesMap = coreBgmRows.ToDictionary(p => $"ui_bgm_{p.ToneId}", p => p.Series, StringComparer.OrdinalIgnoreCase);
-            var coreToneIds = coreBgmRows.Select(p => $"ui_bgm_{p.ToneId}").ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            var overridePath = _config.CurrentValue.Sma5hMusicOverride.ModPath;
-            var playlistOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_PLAYLIST_JSON_FILE)) ?? new JObject();
-            var orderOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_ORDER_JSON_FILE));
-            var coreBgmOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_BGM_JSON_FILE));
-            var coreGameOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_GAME_JSON_FILE));
-            var coreSeriesOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_SERIES_JSON_FILE));
-            var stageOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_STAGE_JSON_FILE));
-
-            foreach (var mod in mods)
+            foreach (var series in context.SeriesList.Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series))))
             {
-                var metadataPath = Path.Combine(mod.ModPath, MusicConstants.MusicModFiles.MUSIC_MOD_METADATA_JSON_FILE);
-                if (!File.Exists(metadataPath))
-                    continue;
+                foreach (JObject game in GetArray(series, "games"))
+                {
+                    foreach (JObject bgm in GetArray(game, "bgms"))
+                        yield return CreateBgmBuildEntry(context.Mod.ModPath, bgm);
+                }
 
-                _logger.LogInformation("Generating CSK packs from {MetadataPath}", metadataPath);
+                foreach (var movedGame in GetCoreGameMovedGames(series, context.Metadata, coreGameOverride))
+                {
+                    foreach (JObject bgm in GetArray(movedGame, "bgms"))
+                        yield return CreateBgmBuildEntry(context.Mod.ModPath, bgm);
+                }
+            }
+        }
 
-                var metadata = JObject.Parse(File.ReadAllText(metadataPath));
-                var packName = GetString(metadata, "name", mod.Name);
-                var safePackName = SanitizePathSegment(packName, mod.Name, "pack folder name");
-                var seriesList = GetArray(metadata, "series").Cast<JObject>().ToList();
-                var seriesIdToName = seriesList
-                    .Where(p => !string.IsNullOrEmpty(GetString(p, "ui_series_id")) && !string.IsNullOrEmpty(GetString(p, "name_id")))
-                    .GroupBy(p => GetString(p, "ui_series_id"), StringComparer.OrdinalIgnoreCase)
-                    .ToDictionary(p => p.Key, p => GetString(p.First(), "name_id"), StringComparer.OrdinalIgnoreCase);
+        private BgmBuildEntry CreateBgmBuildEntry(string modPath, JObject bgm)
+        {
+            var bgmProperty = bgm["bgm_properties"] as JObject;
+            var nameId = GetString(bgmProperty, "name_id");
+            var filename = GetString(bgm, "filename");
 
-                var seriesSoundOrder = BuildSeriesSoundOrder(seriesList, orderOverride, coreBgmRows);
+            return new BgmBuildEntry
+            {
+                NameId = nameId,
+                Filename = Path.Combine(modPath, filename),
+                AudioVolume = GetFloat(bgm["nus3bank_config"], "volume", 2.7f)
+            };
+        }
 
-                foreach (var series in seriesList)
+        private void GenerateCskPacks(IEnumerable<CskModContext> contexts, string generatedBgmFolder, string outputRoot, HashSet<string> selectedSeriesKeys, CskBuildResources buildResources)
+        {
+            foreach (var context in contexts)
+            {
+                _logger.LogInformation("Generating CSK packs from {MetadataPath}", context.MetadataPath);
+
+                var seriesSoundOrder = BuildSeriesSoundOrder(context.SeriesList, buildResources.OrderOverride, buildResources.CoreBgmRows);
+
+                foreach (var series in context.SeriesList.Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series))))
                 {
                     var savedPath = ProcessSeries(
                         series,
-                        safePackName,
+                        context.SafePackName,
                         outputRoot,
                         generatedBgmFolder,
-                        playlistOverride,
-                        seriesIdToName,
-                        coreBgmOverride,
-                        toneToSeriesMap,
-                        orderOverride,
-                        vanillaGames,
+                        buildResources.PlaylistOverride,
+                        context.SeriesIdToName,
+                        buildResources.CoreBgmOverride,
+                        buildResources.ToneToSeriesMap,
+                        buildResources.OrderOverride,
+                        buildResources.VanillaGames,
                         seriesSoundOrder,
-                        stageOverride,
-                        coreGameOverride,
-                        coreSeriesOverride,
-                        metadata,
-                        coreToneIds);
+                        buildResources.StageOverride,
+                        buildResources.CoreGameOverride,
+                        buildResources.CoreSeriesOverride,
+                        context.Metadata,
+                        buildResources.CoreToneIds);
 
                     _logger.LogInformation("[CSK] Saved {SeriesName}: {SavedPath}", GetString(series, "name_id", "<unknown>"), savedPath);
                 }
@@ -446,38 +566,48 @@ namespace Sma5hMusic.GUI.Services
             if (coreGameOverride == null)
                 return;
 
-            foreach (var overrideProperty in coreGameOverride.Properties())
+            foreach (var gameMeta in GetCoreGameMovedGames(series, metadata, coreGameOverride))
             {
-                var overrideEntry = overrideProperty.Value as JObject;
-                if (GetString(overrideEntry, "ui_series_id") != GetString(series, "ui_series_id"))
-                    continue;
-
-                JObject gameMeta = null;
-                foreach (JObject metaSeries in GetArray(metadata, "series"))
-                {
-                    foreach (JObject game in GetArray(metaSeries, "games"))
-                    {
-                        if (GetString(game, "ui_gametitle_id") == GetString(overrideEntry, "ui_gametitle_id") &&
-                            GetString(game, "ui_series_id") != GetString(overrideEntry, "ui_series_id"))
-                        {
-                            gameMeta = game;
-                            break;
-                        }
-                    }
-
-                    if (gameMeta != null)
-                        break;
-                }
-
-                if (gameMeta == null)
-                    continue;
-
                 var gameTitle = GetString(gameMeta["msbt_title"], "us_en", GetString(gameMeta, "name_id"));
                 msgTitleEntries.Add(MakeEntry($"tit_{GetString(gameMeta, "name_id")}", EscapeXml(gameTitle)));
 
                 foreach (JObject bgm in GetArray(gameMeta, "bgms"))
                     orderCounter = ProcessBgm(bgm, songData, playlistOverride, msgBgmEntries, orderOverride, seriesName, seriesFolderName, outputRoot, generatedBgmFolder, orderCounter);
             }
+        }
+
+        private IEnumerable<JObject> GetCoreGameMovedGames(JObject series, JObject metadata, JObject coreGameOverride)
+        {
+            if (coreGameOverride == null)
+                yield break;
+
+            foreach (var overrideProperty in coreGameOverride.Properties())
+            {
+                var overrideEntry = overrideProperty.Value as JObject;
+                if (GetString(overrideEntry, "ui_series_id") != GetString(series, "ui_series_id"))
+                    continue;
+
+                var movedGame = FindCoreGameMovedGame(metadata, overrideEntry);
+                if (movedGame != null)
+                    yield return movedGame;
+            }
+        }
+
+        private JObject FindCoreGameMovedGame(JObject metadata, JObject overrideEntry)
+        {
+            foreach (JObject metaSeries in GetArray(metadata, "series"))
+            {
+                foreach (JObject game in GetArray(metaSeries, "games"))
+                {
+                    if (GetString(game, "ui_gametitle_id") == GetString(overrideEntry, "ui_gametitle_id") &&
+                        GetString(game, "ui_series_id") != GetString(overrideEntry, "ui_series_id"))
+                    {
+                        return game;
+                    }
+                }
+            }
+
+            return null;
         }
 
         private void ProcessCoreBgmOverrides(
@@ -1002,6 +1132,19 @@ namespace Sma5hMusic.GUI.Services
             return int.TryParse(value.ToString(), out output) ? output : fallback;
         }
 
+        private static float GetFloat(JToken token, string key, float fallback)
+        {
+            if (token == null)
+                return fallback;
+
+            var value = token[key];
+            if (value == null || value.Type == JTokenType.Null)
+                return fallback;
+
+            float output;
+            return float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out output) ? output : fallback;
+        }
+
         private static JArray GetArray(JToken token, string key)
         {
             if (token == null)
@@ -1071,11 +1214,7 @@ namespace Sma5hMusic.GUI.Services
             var seriesName = GetString(series, "name_id");
             var title = GetString(series["msbt_title"], "us_en");
             if (string.IsNullOrWhiteSpace(title))
-                title = GetString(series["msbt_title"], "eu_en");
-            if (string.IsNullOrWhiteSpace(title))
                 title = GetString(series["title"], "us_en");
-            if (string.IsNullOrWhiteSpace(title))
-                title = GetString(series["title"], "eu_en");
 
             return string.IsNullOrWhiteSpace(title) ? seriesName : title;
         }
@@ -1084,6 +1223,38 @@ namespace Sma5hMusic.GUI.Services
         {
             public string ToneId { get; set; }
             public string Series { get; set; }
+        }
+
+        private class CskModContext
+        {
+            public IMusicMod Mod { get; set; }
+            public string MetadataPath { get; set; }
+            public JObject Metadata { get; set; }
+            public string PackName { get; set; }
+            public string SafePackName { get; set; }
+            public List<JObject> SeriesList { get; set; }
+            public Dictionary<string, string> SeriesIdToName { get; set; }
+        }
+
+        private class CskBuildResources
+        {
+            public List<CoreBgmRow> CoreBgmRows { get; set; }
+            public Dictionary<string, string> VanillaGames { get; set; }
+            public Dictionary<string, string> ToneToSeriesMap { get; set; }
+            public HashSet<string> CoreToneIds { get; set; }
+            public JObject PlaylistOverride { get; set; }
+            public JObject OrderOverride { get; set; }
+            public JObject CoreBgmOverride { get; set; }
+            public JObject CoreGameOverride { get; set; }
+            public JObject CoreSeriesOverride { get; set; }
+            public JObject StageOverride { get; set; }
+        }
+
+        private class BgmBuildEntry
+        {
+            public string NameId { get; set; }
+            public float AudioVolume { get; set; }
+            public string Filename { get; set; }
         }
 
         private static readonly HashSet<string> DlcSeries = new HashSet<string>(new[]

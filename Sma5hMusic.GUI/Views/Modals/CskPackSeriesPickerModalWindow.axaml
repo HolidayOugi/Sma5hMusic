@@ -1,0 +1,42 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        Width="650" Height="700" MinWidth="650" MinHeight="500"
+        x:Class="Sma5hMusic.GUI.Views.CskPackSeriesPickerModalWindow"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
+        Title="Build CSK Packs">
+  <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
+    <Border Classes="headerTitle" DockPanel.Dock="Top">
+      <TextBlock>Select CSK Pack Series</TextBlock>
+    </Border>
+
+    <StackPanel Classes="modalActions" DockPanel.Dock="Bottom">
+      <Button Content="Build Selected" Command="{Binding ActionOK}" CommandParameter="{Binding $parent[Window]}"></Button>
+      <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
+    </StackPanel>
+
+    <DockPanel Classes="content" LastChildFill="True">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+        <Button Content="Enable All" Command="{Binding ActionEnableAll}" Margin="0,0,8,0"></Button>
+        <Button Content="Disable All" Command="{Binding ActionDisableAll}"></Button>
+      </StackPanel>
+
+      <ScrollViewer VerticalScrollBarVisibility="Visible">
+        <ItemsControl Items="{Binding Series}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,3">
+                <Grid ColumnDefinitions="2*,*" HorizontalAlignment="Stretch">
+                  <TextBlock Grid.Column="0" Text="{Binding DisplayName}" TextWrapping="Wrap"/>
+                  <TextBlock Grid.Column="1" Text="{Binding ModName}" Opacity="0.65" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                </Grid>
+              </CheckBox>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+    </DockPanel>
+  </DockPanel>
+</Window>
