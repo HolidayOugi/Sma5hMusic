@@ -4,6 +4,7 @@ using Sma5hMusic.GUI.Helpers;
 using System;
 using System.Globalization;
 using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using VGMMusic;
 
@@ -41,6 +42,12 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public string Text { get; set; }
 
+        public bool IsExecutingAction
+        {
+            get => _isExecutingAction;
+            set => this.RaiseAndSetIfChanged(ref _isExecutingAction, value);
+        }
+
         public MusicPlayerViewModel(IVGMMusicPlayer musicPlayer, string filename, bool inGameVolume = false)
         {
             _musicPlayer = musicPlayer;
@@ -49,7 +56,7 @@ namespace Sma5hMusic.GUI.ViewModels
 
             Text = PLAY;
 
-            ActionPlaySong = ReactiveCommand.CreateFromTask(TriggerButton, this.WhenAnyValue(p => p._isExecutingAction, p => p == false));
+            ActionPlaySong = ReactiveCommand.CreateFromTask(TriggerButton, this.WhenAnyValue(p => p.IsExecutingAction).Select(p => !p));
         }
 
         public async Task ChangeFilename(string filename)
@@ -61,12 +68,18 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public async Task TriggerButton()
         {
-            _isExecutingAction = true;
-            if (_isPlaying)
-                await StopSong();
-            else
-                await PlaySong();
-            // _isExecutingAction = false;
+            IsExecutingAction = true;
+            try
+            {
+                if (_isPlaying)
+                    await StopSong();
+                else
+                    await PlaySong();
+            }
+            finally
+            {
+                IsExecutingAction = false;
+            }
         }
 
         public async Task PlaySong()
@@ -75,7 +88,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 await _currentPlayControl.StopSong();
 
             _musicPlayer.Volume = AudioVolume;
-            await _musicPlayer.Play(Filename);
+            if (!await _musicPlayer.Play(Filename))
+                return;
+
             Text = STOP;
             _currentPlayControl = this;
             _isPlaying = true;
@@ -86,6 +101,8 @@ namespace Sma5hMusic.GUI.ViewModels
             await _musicPlayer.Stop();
             Text = PLAY;
             _isPlaying = false;
+            if (_currentPlayControl == this)
+                _currentPlayControl = null;
         }
 
         private float ConvertVolumeToMusicPlayer(float volume)

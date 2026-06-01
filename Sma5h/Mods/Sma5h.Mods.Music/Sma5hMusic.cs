@@ -104,6 +104,7 @@ namespace Sma5h.Mods.Music
                 Directory.CreateDirectory(_config.CurrentValue.Sma5hMusic.CachePath);
 
             //Save NUS3Audio/Nus3Bank
+            _nus3AudioService.ResetGeneratedNus3BankIds();
             foreach (var bgmPropertyEntry in _audioStateService.GetModBgmPropertyEntries())
             {
                 var nusBankOutputFile = Path.Combine(_config.CurrentValue.OutputPath, "stream;", "sound", "bgm", string.Format(MusicConstants.GameResources.NUS3BANK_FILE, bgmPropertyEntry.NameId));

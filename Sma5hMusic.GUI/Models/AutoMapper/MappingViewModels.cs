@@ -181,6 +181,8 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.TotalTimeMs, me => me.MapFrom(p => p.TotalTimeMs))
                 .ForMember(i => i.Filename, me => me.MapFrom(p => p.Filename))
                 .ForMember(i => i.AudioVolume, me => me.MapFrom(p => p.AudioVolume))
+                .ForMember(i => i.DoesFileExist, me => me.Ignore())
+                .ForMember(i => i.MusicPlayer, me => me.Ignore())
                 .ForMember(i => i.NameId, me => me.MapFrom(p => p.NameId));
 
             CreateMap<ViewModels.BgmDbRootEntryViewModel, BgmDbRootEntry>()
@@ -381,7 +383,9 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
             CreateMap<ViewModels.BgmAssignedInfoEntryViewModel, ViewModels.BgmAssignedInfoEntryViewModel>();
             CreateMap<ViewModels.BgmStreamPropertyEntryViewModel, ViewModels.BgmStreamPropertyEntryViewModel>();
             CreateMap<ViewModels.BgmStreamSetEntryViewModel, ViewModels.BgmStreamSetEntryViewModel>();
-            CreateMap<ViewModels.BgmPropertyEntryViewModel, ViewModels.BgmPropertyEntryViewModel>();
+            CreateMap<ViewModels.BgmPropertyEntryViewModel, ViewModels.BgmPropertyEntryViewModel>()
+                .ForMember(i => i.DoesFileExist, me => me.Ignore())
+                .ForMember(i => i.MusicPlayer, me => me.Ignore());
 
             CreateMap<BgmDbRootEntry, BgmDbRootEntry>();
             CreateMap<BgmAssignedInfoEntry, BgmAssignedInfoEntry>();

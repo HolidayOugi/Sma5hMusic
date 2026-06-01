@@ -34,6 +34,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IFileDialog _fileDialog;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
+        private readonly ICskPackBuildService _cskPackBuildService;
         private readonly IOptionsMonitor<ApplicationSettings> _appSettings;
         private readonly ILogger _logger;
         private readonly IMapper _mapper;
@@ -73,6 +74,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionExit { get; }
         public ReactiveCommand<Unit, Unit> ActionBuild { get; }
         public ReactiveCommand<Unit, Unit> ActionBuildNoCache { get; }
+        public ReactiveCommand<Unit, Unit> ActionBuildCskPacks { get; }
         public ReactiveCommand<Unit, Unit> ActionRefreshData { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleAdvanced { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleConsole { get; }
@@ -92,13 +94,14 @@ namespace Sma5hMusic.GUI.ViewModels
 
 
         public MainWindowViewModel(IServiceProvider serviceProvider, IViewModelManager viewModelManager, IGUIStateManager guiStateManager, IMapper mapper, IVGMMusicPlayer musicPlayer,
-            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IBuildDialog buildDialog, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
+            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
         {
             _viewModelManager = viewModelManager;
             _guiStateManager = guiStateManager;
             _musicPlayer = musicPlayer;
             _fileDialog = fileDialog;
             _buildDialog = buildDialog;
+            _cskPackBuildService = cskPackBuildService;
             _messageDialog = messageDialog;
             _rootDialog = rootDialog;
             _logger = logger;
@@ -193,6 +196,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionExit = ReactiveCommand.Create(OnExit);
             ActionBuild = ReactiveCommand.CreateFromTask(OnBuild);
             ActionBuildNoCache = ReactiveCommand.CreateFromTask(OnBuildNoCache);
+            ActionBuildCskPacks = ReactiveCommand.CreateFromTask(OnBuildCskPacks);
             ActionRefreshData = ReactiveCommand.CreateFromTask(() => OnInitData());
             ActionToggleAdvanced = ReactiveCommand.Create(OnAdvancedToggle);
             ActionToggleConsole = ReactiveCommand.Create(OnConsoleToggle);
@@ -253,6 +257,29 @@ namespace Sma5hMusic.GUI.ViewModels
                 IsShowingDebug = false;
                 return Task.CompletedTask;
             });
+        }
+
+        public async Task OnBuildCskPacks()
+        {
+            IsLoading = true;
+            IsShowingDebug = true;
+            await _musicPlayer.Stop();
+            _logger.LogInformation("Building CSK packs. Generating only nus3audio/nus3bank files and CSK pack folders.");
+
+            try
+            {
+                await _cskPackBuildService.Build();
+                await _messageDialog.ShowInformation("Complete", "CSK packs build complete.");
+            }
+            catch (Exception e)
+            {
+                await _messageDialog.ShowError("CSK packs build failed", e.Message, e);
+            }
+            finally
+            {
+                IsLoading = false;
+                IsShowingDebug = false;
+            }
         }
 
         public async Task OnInitData(bool backupData = false)

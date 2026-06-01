@@ -539,9 +539,13 @@ namespace Sma5hMusic.GUI.Services
 
         private void ReOrderVmBgmEntry(BgmDbRootEntryViewModel vmBgmEntry, short position)
         {
+            if (vmBgmEntry.TestDispOrder == position)
+                return;
+
             vmBgmEntry.TestDispOrder = position;
             vmBgmEntry.GetReferenceEntity().TestDispOrder = position;
         }
+
         #endregion
 
         #region LANGUAGE

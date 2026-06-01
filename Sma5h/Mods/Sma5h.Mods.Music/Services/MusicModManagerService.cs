@@ -1,7 +1,6 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
-using Newtonsoft.Json;
 using Sma5h.Mods.Music.Helpers;
 using Sma5h.Mods.Music.Interfaces;
 using Sma5h.Mods.Music.Models;
@@ -76,10 +75,11 @@ namespace Sma5h.Mods.Music.Services
             var jsonBaseFilename = Path.Combine(musicModFolder, MusicConstants.MusicModFiles.MUSIC_MOD_METADATA_JSON_FILE);
             if (File.Exists(jsonBaseFilename))
             {
-                var modBase = LoadJsonBaseMod(jsonBaseFilename);
-                if (modBase.Version == 2 || modBase.Version == 3 || modBase.Version == 4 || modBase.Version == 5)
+                musicMod = ActivatorUtilities.CreateInstance<MusicMod>(_serviceProvider, musicModFolder);
+                if (musicMod?.Mod == null ||
+                    (musicMod.Mod.Version != 2 && musicMod.Mod.Version != 3 && musicMod.Mod.Version != 4 && musicMod.Mod.Version != 5))
                 {
-                    musicMod = ActivatorUtilities.CreateInstance<MusicMod>(_serviceProvider, musicModFolder);
+                    musicMod = null;
                 }
             }
 
@@ -87,19 +87,6 @@ namespace Sma5h.Mods.Music.Services
                 return null;
 
             return musicMod;
-        }
-
-        private MusicModInformation LoadJsonBaseMod(string filename)
-        {
-            try
-            {
-                return JsonConvert.DeserializeObject<MusicModInformation>(File.ReadAllText(filename));
-            }
-            catch (Exception e)
-            {
-                _logger.LogError(e, "Could not read file {JsonFile}", filename);
-                return null;
-            }
         }
 
         public async Task<bool> UpdateSeriesEntry(SeriesEntry seriesEntry)

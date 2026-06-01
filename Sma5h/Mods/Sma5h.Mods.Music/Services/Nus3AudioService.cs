@@ -24,6 +24,8 @@ namespace Sma5h.Mods.Music.Services
         private readonly string _nus3AudioExeFile;
         private readonly string _nus3BankTemplateFile;
         private ushort _lastBankId;
+        private ushort _firstGeneratedBankId;
+        private ushort _generatedBankCount;
 
         public Nus3AudioService(IOptionsMonitor<Sma5hMusicOptions> config, IAudioMetadataService audioMetadataService, IProcessService processService, ILogger<INus3AudioService> logger)
         {
@@ -36,6 +38,7 @@ namespace Sma5h.Mods.Music.Services
 
             var nus3BankIds = GetCoreNus3BankIds();
             _lastBankId = (ushort)(nus3BankIds.Count > 0 ? nus3BankIds.Values.OrderByDescending(p => p).First() : 0);
+            _firstGeneratedBankId = (ushort)(_lastBankId + 1);
         }
 
         public bool GenerateNus3Audio(string toneId, string inputMediaFile, string outputMediaFile)
@@ -170,10 +173,16 @@ namespace Sma5h.Mods.Music.Services
             return true;
         }
 
+        public void ResetGeneratedNus3BankIds()
+        {
+            _generatedBankCount = 0;
+        }
+
         private ushort GetNewNus3BankId()
         {
-            _lastBankId++;
-            return _lastBankId;
+            var bankId = (ushort)(_firstGeneratedBankId + (_generatedBankCount % 20));
+            _generatedBankCount++;
+            return bankId;
         }
 
         private void EnsureRequiredFilesAreFound()
