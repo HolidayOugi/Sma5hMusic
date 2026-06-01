@@ -28,6 +28,7 @@ namespace Sma5hMusic.GUI.Services
         private const string CloneBgmId = "ui_bgm_a29_ppm_medley";
         private const string CloneSeriesId = "ui_series_mario";
         private const string CloneGameTitleId = "ui_gametitle_paper_mario_series";
+        private const string SmashBattlePlaylistId = "bgmsmashbtl";
 
         private readonly IOptionsMonitor<ApplicationSettings> _config;
         private readonly IMusicModManagerService _musicModManagerService;
@@ -1436,11 +1437,12 @@ namespace Sma5hMusic.GUI.Services
         private int GetNextPlaylistOrder(string seriesName, JObject playlistData)
         {
             var seriesKey = seriesName.ToLowerInvariant();
-            if (!SeriesToPlaylist.ContainsKey(seriesKey))
+            var playlistIds = GetFallbackPlaylistIds(seriesName);
+            if (playlistIds.Count == 0)
                 return 0;
 
             var maxOrder = -1;
-            foreach (var playlistId in SeriesToPlaylist[seriesKey])
+            foreach (var playlistId in playlistIds)
             {
                 foreach (JObject track in GetArray(playlistData[playlistId], "tracks"))
                 {
@@ -1450,6 +1452,17 @@ namespace Sma5hMusic.GUI.Services
             }
 
             return maxOrder + 1;
+        }
+
+        private static List<string> GetFallbackPlaylistIds(string seriesName)
+        {
+            if (!VanillaSeries.Contains(seriesName))
+                return new List<string> { SmashBattlePlaylistId };
+
+            var seriesKey = seriesName.ToLowerInvariant();
+            return SeriesToPlaylist.ContainsKey(seriesKey)
+                ? SeriesToPlaylist[seriesKey]
+                : new List<string> { $"bgm{seriesName}" };
         }
 
         private int AddToPlaylists(string uiBgmId, JObject songData, JObject playlistOverride, string seriesName, int orderCounter)
@@ -1484,11 +1497,7 @@ namespace Sma5hMusic.GUI.Services
 
             if (!found && currentEntry != null && GetInt(currentEntry, "test_disp_order", -1) != -1)
             {
-                var playlists = SeriesToPlaylist.ContainsKey(seriesName.ToLowerInvariant())
-                    ? SeriesToPlaylist[seriesName.ToLowerInvariant()]
-                    : new List<string> { $"bgm{seriesName}" };
-
-                foreach (var fallbackPlaylistId in playlists)
+                foreach (var fallbackPlaylistId in GetFallbackPlaylistIds(seriesName))
                 {
                     var entries = EnsurePlaylist(songData, fallbackPlaylistId);
                     var entry = new JObject { ["ui_bgm_id"] = uiBgmId };
