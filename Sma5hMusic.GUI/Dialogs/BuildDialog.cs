@@ -108,15 +108,22 @@ namespace Sma5hMusic.GUI.Dialogs
                 return;
             }
 
+            var originalOutputPath = _config.CurrentValue.OutputPath;
+            var musicPackOutputPath = Path.Combine(originalOutputPath, "Music Pack");
+            Directory.CreateDirectory(musicPackOutputPath);
+            _config.CurrentValue.OutputPath = musicPackOutputPath;
+
             _ = Init(async (o) =>
             {
                 if (!o)
                 {
+                    _config.CurrentValue.OutputPath = originalOutputPath;
                     await Dispatcher.UIThread.InvokeAsync(async () =>
                     {
                         await _messageDialog.ShowError("Build", "Could not initialize the build.");
                         await callbackError?.Invoke(new Exception("Mod Init Exception"));
                     }, DispatcherPriority.Background);
+                    return;
                 }
 
                 //Check if ArcOutput is empty
@@ -162,6 +169,11 @@ namespace Sma5hMusic.GUI.Dialogs
                             await _messageDialog.ShowError("Build failure", $"There was a general exception during Build.\r\n{e.Message}", e);
                             await callbackError?.Invoke(e);
                         }, DispatcherPriority.Background);
+                        return;
+                    }
+                    finally
+                    {
+                        _config.CurrentValue.OutputPath = originalOutputPath;
                     }
 
                     await Dispatcher.UIThread.InvokeAsync(async () =>

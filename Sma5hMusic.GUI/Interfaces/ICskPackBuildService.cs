@@ -8,6 +8,7 @@ namespace Sma5hMusic.GUI.Interfaces
     {
         Task Build();
         Task Build(IEnumerable<string> selectedSeriesKeys);
+        Task BuildSingle(IEnumerable<string> selectedSeriesKeys);
         Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries();
     }
 }

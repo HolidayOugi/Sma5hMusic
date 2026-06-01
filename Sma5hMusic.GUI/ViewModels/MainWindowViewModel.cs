@@ -75,6 +75,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionBuild { get; }
         public ReactiveCommand<Unit, Unit> ActionBuildNoCache { get; }
         public ReactiveCommand<Unit, Unit> ActionBuildCskPacks { get; }
+        public ReactiveCommand<Unit, Unit> ActionBuildSingleCskPack { get; }
         public ReactiveCommand<Unit, Unit> ActionRefreshData { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleAdvanced { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleConsole { get; }
@@ -197,6 +198,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionBuild = ReactiveCommand.CreateFromTask(OnBuild);
             ActionBuildNoCache = ReactiveCommand.CreateFromTask(OnBuildNoCache);
             ActionBuildCskPacks = ReactiveCommand.CreateFromTask(OnBuildCskPacks);
+            ActionBuildSingleCskPack = ReactiveCommand.CreateFromTask(OnBuildSingleCskPack);
             ActionRefreshData = ReactiveCommand.CreateFromTask(() => OnInitData());
             ActionToggleAdvanced = ReactiveCommand.Create(OnAdvancedToggle);
             ActionToggleConsole = ReactiveCommand.Create(OnConsoleToggle);
@@ -261,13 +263,53 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public async Task OnBuildCskPacks()
         {
+            await BuildCskPacks(false);
+        }
+
+        public async Task OnBuildSingleCskPack()
+        {
             var buildStarted = false;
             try
             {
                 var availableSeries = await _cskPackBuildService.GetAvailableSeries();
                 if (availableSeries.Count == 0)
                 {
-                    await _messageDialog.ShowError("CSK packs build failed", "No series were found in the currently loaded music mods.");
+                    await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
+                    return;
+                }
+
+                IsLoading = true;
+                IsShowingDebug = true;
+                buildStarted = true;
+                await _musicPlayer.Stop();
+                _logger.LogInformation("Building single CSK pack for all {SeriesCount} available series.", availableSeries.Count);
+
+                await _cskPackBuildService.BuildSingle(availableSeries.Select(p => p.Key));
+                await _messageDialog.ShowInformation("Complete", "Single CSK pack build complete.");
+            }
+            catch (Exception e)
+            {
+                await _messageDialog.ShowError("CSK pack build failed", e.Message, e);
+            }
+            finally
+            {
+                if (buildStarted)
+                {
+                    IsLoading = false;
+                    IsShowingDebug = false;
+                }
+            }
+        }
+
+        private async Task BuildCskPacks(bool singlePack)
+        {
+            var buildStarted = false;
+            try
+            {
+                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
+                if (availableSeries.Count == 0)
+                {
+                    await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
                     return;
                 }
 
@@ -285,14 +327,18 @@ namespace Sma5hMusic.GUI.ViewModels
                 IsShowingDebug = true;
                 buildStarted = true;
                 await _musicPlayer.Stop();
-                _logger.LogInformation("Building CSK packs for {SelectedSeriesCount} selected series. Generating only selected nus3audio/nus3bank files and CSK pack folders.", selectedSeriesKeys.Count);
+                _logger.LogInformation("Building {CskBuildMode} CSK pack(s) for {SelectedSeriesCount} selected series.", singlePack ? "single" : "modular", selectedSeriesKeys.Count);
 
-                await _cskPackBuildService.Build(selectedSeriesKeys);
-                await _messageDialog.ShowInformation("Complete", "CSK packs build complete.");
+                if (singlePack)
+                    await _cskPackBuildService.BuildSingle(selectedSeriesKeys);
+                else
+                    await _cskPackBuildService.Build(selectedSeriesKeys);
+
+                await _messageDialog.ShowInformation("Complete", singlePack ? "Single CSK pack build complete." : "Modular CSK packs build complete.");
             }
             catch (Exception e)
             {
-                await _messageDialog.ShowError("CSK packs build failed", e.Message, e);
+                await _messageDialog.ShowError("CSK pack build failed", e.Message, e);
             }
             finally
             {
