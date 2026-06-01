@@ -13,10 +13,6 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IVGMMusicPlayer _vgmPlayer;
         private readonly bool _inGameVolume;
         private float _audioVolume;
-        private string _filename;
-        private string _playerFilename;
-        private bool _doesFileExist;
-        private MusicPlayerViewModel _musicPlayer;
         private uint _totalTimeMs;
         private uint _totalSamples;
 
@@ -48,18 +44,8 @@ namespace Sma5hMusic.GUI.ViewModels
             }
         }
         public uint Frequency { get { return TotalTimeMs == 0 ? 0 : (uint)((double)TotalSamples / (double)TotalTimeMs * 1000.0); } }
-        public string Filename
-        {
-            get => _filename;
-            set
-            {
-                if (_filename == value)
-                    return;
-
-                this.RaiseAndSetIfChanged(ref _filename, value);
-                RefreshMusicPlayer();
-            }
-        }
+        [Reactive]
+        public string Filename { get; set; }
         //[Reactive]
         public float AudioVolume
         {
@@ -70,31 +56,14 @@ namespace Sma5hMusic.GUI.ViewModels
             set
             {
                 this.RaiseAndSetIfChanged(ref _audioVolume, value);
-                if (_musicPlayer != null)
-                    _musicPlayer.AudioVolume = value;
+                if (MusicPlayer != null)
+                    MusicPlayer.AudioVolume = value;
             }
         }
 
         //Music player
-        public bool DoesFileExist
-        {
-            get => _doesFileExist;
-            set => this.RaiseAndSetIfChanged(ref _doesFileExist, value);
-        }
-
-        public MusicPlayerViewModel MusicPlayer
-        {
-            get
-            {
-                if (_musicPlayer == null && DoesFileExist)
-                {
-                    _musicPlayer = new MusicPlayerViewModel(_vgmPlayer, _playerFilename, _inGameVolume) { AudioVolume = _audioVolume };
-                }
-
-                return _musicPlayer;
-            }
-            private set => this.RaiseAndSetIfChanged(ref _musicPlayer, value);
-        }
+        public bool DoesFileExist { get; set; }
+        public MusicPlayerViewModel MusicPlayer { get; set; }
 
         public BgmPropertyEntryViewModel(IVGMMusicPlayer vgmPlayer, IViewModelManager viewModelManager, IMapper mapper, BgmPropertyEntry bgmPropertyEntry, bool inGameVolume = false)
             : base(viewModelManager, mapper, bgmPropertyEntry)
@@ -102,16 +71,14 @@ namespace Sma5hMusic.GUI.ViewModels
             _vgmPlayer = vgmPlayer;
             _inGameVolume = inGameVolume;
             NameId = bgmPropertyEntry.NameId;
-            _audioVolume = bgmPropertyEntry.AudioVolume;
             Filename = bgmPropertyEntry.Filename;
-        }
 
-        private void RefreshMusicPlayer()
-        {
-            _playerFilename = string.IsNullOrEmpty(Filename) ? Filename : Path.GetFullPath(Filename);
-            DoesFileExist = File.Exists(_playerFilename);
-            MusicPlayer = null;
-            this.RaisePropertyChanged(nameof(MusicPlayer));
+            DoesFileExist = File.Exists(Filename);
+            if (DoesFileExist)
+                MusicPlayer = new MusicPlayerViewModel(vgmPlayer, Filename, inGameVolume)
+                {
+                    AudioVolume = bgmPropertyEntry.AudioVolume
+                };
         }
 
         public override ReactiveObjectBaseViewModel GetCopy()

@@ -51,21 +51,19 @@ namespace Sma5h.Mods.Music.MusicMods
 
             //Process audio mods
             _logger.LogInformation("Mod {MusicMod} by '{Author}' - {NbrSongs} song(s)", _musicModConfig.Name, _musicModConfig.Author, _musicModConfig.Series.Sum(s => s.Games.Sum(p => p.Bgms.Count)));
-            var existingFiles = new Dictionary<string, bool>(StringComparer.OrdinalIgnoreCase);
-            var loadedSongs = 0;
 
             foreach (var series in _musicModConfig.Series)
             {
-                output.SeriesEntries.Add(MapSeriesEntry(series));
+                output.SeriesEntries.Add(_mapper.Map(series, new SeriesEntry(series.UiSeriesId, EntrySource.Mod)));
 
                 foreach (var game in series.Games)
                 {
-                    output.GameTitleEntries.Add(MapGameTitleEntry(game));
+                    output.GameTitleEntries.Add(_mapper.Map(game, new GameTitleEntry(game.UiGameTitleId, EntrySource.Mod)));
 
                     foreach (var bgm in game.Bgms)
                     {
-                        var filename = Path.GetFullPath(Path.Combine(ModPath, bgm.Filename));
-                        if (!FileExists(filename, existingFiles))
+                        string filename = Path.Combine(ModPath, bgm.Filename);
+                        if (!File.Exists(filename))
                         {
                             _logger.LogError("Mod {MusicMod}: Song {Song} ({ToneId}) doesn't exist.", _musicModConfig.Name, filename, bgm.ToneId);
                             continue;
@@ -74,179 +72,19 @@ namespace Sma5h.Mods.Music.MusicMods
                         GetUpdatedBgmAssignedInfoConfig(bgm.AssignedInfo);
                         GetUpdatedStreamSetConfig(bgm.StreamSet);
 
-                        _logger.LogDebug("Mod {MusicMod}: Adding song {Song} ({ToneId})", _musicModConfig.Name, filename, bgm.ToneId);
-                        var bgmDbRootEntry = MapBgmDbRootEntry(bgm.DbRoot);
+                        _logger.LogInformation("Mod {MusicMod}: Adding song {Song} ({ToneId})", _musicModConfig.Name, filename, bgm.ToneId);
+                        var bgmDbRootEntry = _mapper.Map(bgm.DbRoot, new BgmDbRootEntry(bgm.DbRoot.UiBgmId, this));
                         bgmDbRootEntry.UiGameTitleId = game.UiGameTitleId; //Enforce
                         output.BgmDbRootEntries.Add(bgmDbRootEntry);
-                        output.BgmStreamSetEntries.Add(MapBgmStreamSetEntry(bgm.StreamSet));
-                        output.BgmAssignedInfoEntries.Add(MapBgmAssignedInfoEntry(bgm.AssignedInfo));
-                        output.BgmStreamPropertyEntries.Add(MapBgmStreamPropertyEntry(bgm.StreamProperty));
-                        output.BgmPropertyEntries.Add(MapBgmPropertyEntry(bgm.BgmProperties, filename, bgm.NUS3BankConfig));
-                        loadedSongs++;
+                        output.BgmStreamSetEntries.Add(_mapper.Map(bgm.StreamSet, new BgmStreamSetEntry(bgm.StreamSet.StreamSetId, this)));
+                        output.BgmAssignedInfoEntries.Add(_mapper.Map(bgm.AssignedInfo, new BgmAssignedInfoEntry(bgm.AssignedInfo.InfoId, this)));
+                        output.BgmStreamPropertyEntries.Add(_mapper.Map(bgm.StreamProperty, new BgmStreamPropertyEntry(bgm.StreamProperty.StreamId, this)));
+                        output.BgmPropertyEntries.Add(_mapper.Map(bgm.BgmProperties, new BgmPropertyEntry(bgm.BgmProperties.NameId, filename, this) { AudioVolume = bgm.NUS3BankConfig.AudioVolume }));
                     }
                 }
             }
 
-            _logger.LogInformation("Mod {MusicMod}: Loaded {NbrSongs} song(s)", _musicModConfig.Name, loadedSongs);
-
             return output;
-        }
-
-        private bool FileExists(string filename, IDictionary<string, bool> existingFiles)
-        {
-            if (!existingFiles.TryGetValue(filename, out var exists))
-            {
-                exists = File.Exists(filename);
-                existingFiles.Add(filename, exists);
-            }
-
-            return exists;
-        }
-
-        private SeriesEntry MapSeriesEntry(SeriesConfig series)
-        {
-            return new SeriesEntry(series.UiSeriesId, EntrySource.Mod)
-            {
-                NameId = series.NameId,
-                DispOrder = series.DispOrder,
-                DispOrderSound = series.DispOrderSound,
-                SaveNo = (sbyte)series.SaveNo,
-                Unk1 = series.Unk1,
-                IsDlc = series.IsDlc,
-                IsPatch = series.IsPatch,
-                DlcCharaId = series.DlcCharaId,
-                IsUseAmiiboBg = series.IsUseAmiiboBg,
-                MSBTTitle = series.Title ?? new Dictionary<string, string>()
-            };
-        }
-
-        private GameTitleEntry MapGameTitleEntry(GameConfig game)
-        {
-            return new GameTitleEntry(game.UiGameTitleId, EntrySource.Mod)
-            {
-                NameId = game.NameId,
-                UiSeriesId = game.UiSeriesId,
-                Unk1 = game.Unk1,
-                Release = game.Release,
-                MSBTTitle = game.Title ?? new Dictionary<string, string>()
-            };
-        }
-
-        private BgmDbRootEntry MapBgmDbRootEntry(BgmDbRootConfig dbRoot)
-        {
-            return new BgmDbRootEntry(dbRoot.UiBgmId, this)
-            {
-                StreamSetId = dbRoot.StreamSetId,
-                Rarity = dbRoot.Rarity,
-                RecordType = dbRoot.RecordType,
-                UiGameTitleId = dbRoot.UiGameTitleId,
-                UiGameTitleId1 = dbRoot.UiGameTitleId1,
-                UiGameTitleId2 = dbRoot.UiGameTitleId2,
-                UiGameTitleId3 = dbRoot.UiGameTitleId3,
-                UiGameTitleId4 = dbRoot.UiGameTitleId4,
-                NameId = dbRoot.NameId,
-                SaveNo = dbRoot.SaveNo,
-                TestDispOrder = dbRoot.TestDispOrder,
-                MenuValue = dbRoot.MenuValue,
-                JpRegion = dbRoot.JpRegion,
-                OtherRegion = dbRoot.OtherRegion,
-                Possessed = dbRoot.Possessed,
-                PrizeLottery = dbRoot.PrizeLottery,
-                ShopPrice = dbRoot.ShopPrice,
-                CountTarget = dbRoot.CountTarget,
-                MenuLoop = dbRoot.MenuLoop,
-                IsSelectableStageMake = dbRoot.IsSelectableStageMake,
-                IsSelectableMovieEdit = dbRoot.IsSelectableMovieEdit,
-                IsSelectableOriginal = dbRoot.IsSelectableOriginal,
-                IsDlc = dbRoot.IsDlc,
-                IsPatch = dbRoot.IsPatch,
-                DlcUiCharaId = dbRoot.DlcUiCharaId,
-                DlcMiiHatMotifId = dbRoot.DlcMiiHatMotifId,
-                DlcMiiBodyMotifId = dbRoot.DlcMiiBodyMotifId,
-                Unk6 = dbRoot.Unk6,
-                Title = dbRoot.Title ?? dbRoot.OldTitle ?? new Dictionary<string, string>(),
-                Author = dbRoot.Author ?? dbRoot.OldAuthor ?? new Dictionary<string, string>(),
-                Copyright = dbRoot.Copyright ?? dbRoot.OldCopyright ?? new Dictionary<string, string>()
-            };
-        }
-
-        private BgmStreamSetEntry MapBgmStreamSetEntry(BgmStreamSetConfig streamSet)
-        {
-            return new BgmStreamSetEntry(streamSet.StreamSetId, this)
-            {
-                SpecialCategory = streamSet.SpecialCategory,
-                Info0 = streamSet.Info0,
-                Info1 = streamSet.Info1,
-                Info2 = streamSet.Info2,
-                Info3 = streamSet.Info3,
-                Info4 = streamSet.Info4,
-                Info5 = streamSet.Info5,
-                Info6 = streamSet.Info6,
-                Info7 = streamSet.Info7,
-                Info8 = streamSet.Info8,
-                Info9 = streamSet.Info9,
-                Info10 = streamSet.Info10,
-                Info11 = streamSet.Info11,
-                Info12 = streamSet.Info12,
-                Info13 = streamSet.Info13,
-                Info14 = streamSet.Info14,
-                Info15 = streamSet.Info15
-            };
-        }
-
-        private BgmAssignedInfoEntry MapBgmAssignedInfoEntry(BgmAssignedInfoConfig assignedInfo)
-        {
-            return new BgmAssignedInfoEntry(assignedInfo.InfoId, this)
-            {
-                StreamId = assignedInfo.StreamId,
-                Condition = assignedInfo.Condition,
-                ConditionProcess = assignedInfo.ConditionProcess,
-                StartFrame = assignedInfo.StartFrame,
-                ChangeFadeInFrame = assignedInfo.ChangeFadeInFrame,
-                ChangeStartDelayFrame = assignedInfo.ChangeStartDelayFrame,
-                ChangeFadoutFrame = assignedInfo.ChangeFadoutFrame,
-                ChangeStopDelayFrame = assignedInfo.ChangeStopDelayFrame,
-                MenuChangeFadeInFrame = assignedInfo.MenuChangeFadeInFrame,
-                MenuChangeStartDelayFrame = assignedInfo.MenuChangeStartDelayFrame,
-                MenuChangeFadeOutFrame = assignedInfo.MenuChangeFadeOutFrame,
-                MenuChangeStopDelayFrame = assignedInfo.MenuChangeStopDelayFrame
-            };
-        }
-
-        private BgmStreamPropertyEntry MapBgmStreamPropertyEntry(BgmStreamPropertyConfig streamProperty)
-        {
-            return new BgmStreamPropertyEntry(streamProperty.StreamId, this)
-            {
-                DataName0 = streamProperty.DataName0,
-                DataName1 = streamProperty.DataName1,
-                DataName2 = streamProperty.DataName2,
-                DataName3 = streamProperty.DataName3,
-                DataName4 = streamProperty.DataName4,
-                Loop = streamProperty.Loop,
-                EndPoint = streamProperty.EndPoint,
-                FadeOutFrame = streamProperty.FadeOutFrame,
-                StartPointSuddenDeath = streamProperty.StartPointSuddenDeath,
-                StartPointTransition = streamProperty.StartPointTransition,
-                StartPoint0 = streamProperty.StartPoint0,
-                StartPoint1 = streamProperty.StartPoint1,
-                StartPoint2 = streamProperty.StartPoint2,
-                StartPoint3 = streamProperty.StartPoint3,
-                StartPoint4 = streamProperty.StartPoint4
-            };
-        }
-
-        private BgmPropertyEntry MapBgmPropertyEntry(BgmPropertyEntryConfig bgmProperty, string filename, NUS3BankConfig nus3BankConfig)
-        {
-            return new BgmPropertyEntry(bgmProperty.NameId, filename, this)
-            {
-                AudioVolume = nus3BankConfig?.AudioVolume ?? 2.7f,
-                LoopStartMs = bgmProperty.LoopStartMs,
-                LoopStartSample = bgmProperty.LoopStartSample,
-                LoopEndMs = bgmProperty.LoopEndMs,
-                LoopEndSample = bgmProperty.LoopEndSample,
-                TotalTimeMs = bgmProperty.TotalTimeMs,
-                TotalSamples = bgmProperty.TotalSamples
-            };
         }
 
         public async Task<bool> AddOrUpdateMusicModEntries(MusicModEntries musicModEntries)

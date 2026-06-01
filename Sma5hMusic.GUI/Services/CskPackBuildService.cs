@@ -1026,13 +1026,10 @@ namespace Sma5hMusic.GUI.Services
             if (string.IsNullOrWhiteSpace(text))
                 text = "unnamed";
 
-            var invalidChars = new HashSet<char>(Path.GetInvalidFileNameChars());
-
-            // Path.GetInvalidFileNameChars() dipende dalla piattaforma: aggiungo
-            // esplicitamente anche i caratteri vietati da Windows, così il check
-            // resta corretto anche se il codice viene eseguito/testato fuori da Windows.
-            foreach (var c in new[] { '<', '>', ':', '\"', '/', '\\', '|', '?', '*' })
-                invalidChars.Add(c);
+            var invalidChars = new HashSet<char>(new[]
+            {
+                '<', '>', ':', '\"', '/', '\\', '|', '?', '*'
+            });
 
             var builder = new StringBuilder(text.Length);
             foreach (var c in text)

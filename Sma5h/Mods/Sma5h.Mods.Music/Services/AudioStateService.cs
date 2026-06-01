@@ -44,7 +44,6 @@ namespace Sma5h.Mods.Music.Services
         private readonly Dictionary<string, PlaylistEntry> _playlistsEntries;
         private readonly Dictionary<string, StageEntry> _stageEntries;
         private readonly Dictionary<string, float> _coreVolumes;
-        private int _lastMenuValue;
 
         public double GameVersion { get; private set; }
 
@@ -66,7 +65,6 @@ namespace Sma5h.Mods.Music.Services
             _playlistsEntries = new Dictionary<string, PlaylistEntry>();
             _stageEntries = new Dictionary<string, StageEntry>();
             _coreVolumes = GetCoreNus3BankVolumes();
-            _lastMenuValue = 0;
         }
 
         #region GET
@@ -195,7 +193,7 @@ namespace Sma5h.Mods.Music.Services
             }
 
             //TODO: Figure out how MenuValue works - Incrementing for now
-            bgmDbRootEntry.MenuValue = ++_lastMenuValue; //TODO: Treat separately
+            bgmDbRootEntry.MenuValue = _bgmDbRootEntries.Values.OrderByDescending(p => p.MenuValue).First().MenuValue + 1; //TODO: Treat separately
 
             if (CanAddBgmDbRootEntry(bgmDbRootEntry.UiBgmId))
                 _bgmDbRootEntries.Add(bgmDbRootEntry.UiBgmId, bgmDbRootEntry);
@@ -661,7 +659,6 @@ namespace Sma5h.Mods.Music.Services
             _localesEntries.Clear();
             _playlistsEntries.Clear();
             _stageEntries.Clear();
-            _lastMenuValue = 0;
 
             //Load Data
             var gameResourcePath = _config.CurrentValue.GameResourcesPath;
@@ -699,8 +696,6 @@ namespace Sma5h.Mods.Music.Services
                     }
                 }
             }
-            if (_bgmDbRootEntries.Count > 0)
-                _lastMenuValue = _bgmDbRootEntries.Values.Max(p => p.MenuValue);
 
             //Map StreamSet
             foreach (var paramStreamSetEntry in paramBgmDatabase.StreamSetEntries.Values)
