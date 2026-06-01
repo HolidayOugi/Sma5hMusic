@@ -448,14 +448,14 @@ namespace Sma5hMusic.GUI.Services
             {
                 ["ui_series_id"] = series.UiSeriesId,
                 ["name_id"] = series.NameId,
-                ["disp_order"] = series.DispOrder,
+                ["disp_order"] = 0,
                 ["disp_order_sound"] = series.DispOrderSound,
-                ["save_no"] = series.SaveNo,
+                ["save_no"] = 0,
                 ["0x1c38302364"] = series.Unk1,
                 ["is_dlc"] = series.IsDlc,
                 ["is_patch"] = series.IsPatch,
                 ["dlc_chara_id"] = series.DlcCharaId,
-                ["is_use_amiibo_bg"] = series.IsUseAmiiboBg,
+                ["is_use_amiibo_bg"] = false,
                 ["msbt_title"] = CreateLocalizedObject(series.MSBTTitle)
             };
         }
@@ -870,7 +870,7 @@ namespace Sma5hMusic.GUI.Services
                 .Select(p => p.First().UiGameTitleId)
                 .ToList();
 
-            var index = 0;
+            var index = 1;
             foreach (var gameId in sortedGames)
             {
                 if (!gameEntries.ContainsKey(gameId))
@@ -932,7 +932,7 @@ namespace Sma5hMusic.GUI.Services
                 var ranked = seriesMinOverride
                     .OrderBy(p => p.Value)
                     .ThenBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select((p, i) => new { p.Key, Index = i })
+                    .Select((p, i) => new { p.Key, Index = i + 1 })
                     .ToDictionary(p => p.Key, p => p.Index, StringComparer.OrdinalIgnoreCase);
 
                 foreach (var alias in aliases)
@@ -1091,7 +1091,7 @@ namespace Sma5hMusic.GUI.Services
             if (!string.IsNullOrEmpty(nameId) && seriesSoundOrder.ContainsKey(nameId))
                 return seriesSoundOrder[nameId];
 
-            return 0;
+            return 1;
         }
 
         private static void SetSeriesOrderKey(Dictionary<string, int> seriesOrder, string key, int value)
@@ -1130,13 +1130,13 @@ namespace Sma5hMusic.GUI.Services
                 ["ui_series_id"] = GetString(effectiveSeries, "ui_series_id", uiSeriesId),
                 ["clone_from_series_id"] = CloneSeriesId,
                 ["name_id"] = GetString(effectiveSeries, "name_id", seriesName),
-                ["disp_order"] = GetInt(effectiveSeries, "disp_order", 0),
+                ["disp_order"] = 0,
                 ["disp_order_sound"] = dispOrderSound,
-                ["save_no"] = GetInt(effectiveSeries, "save_no", 0),
+                ["save_no"] = 0,
                 ["shown_as_series_in_directory"] = false,
                 ["is_dlc"] = GetBool(effectiveSeries, "is_dlc", isDlcSeries),
                 ["is_patch"] = GetBool(effectiveSeries, "is_patch", isDlcSeries),
-                ["is_use_amiibo_bg"] = GetBool(effectiveSeries, "is_use_amiibo_bg", false)
+                ["is_use_amiibo_bg"] = false
             };
 
             var dlcCharaId = GetString(effectiveSeries, "dlc_chara_id");
