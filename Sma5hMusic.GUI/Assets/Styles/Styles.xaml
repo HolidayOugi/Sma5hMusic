@@ -34,6 +34,9 @@
     <Setter Property="Margin" Value="20"/>
     <Setter Property="Spacing" Value="20"/>
   </Style>
+  <Style Selector=".modal DockPanel.content">
+    <Setter Property="Margin" Value="20"/>
+  </Style>
   <Style Selector=".modal > StackPanel.modalActions">
     <Setter Property="MaxHeight" Value="50"/>
     <Setter Property="HorizontalAlignment" Value="Center"/>

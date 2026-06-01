@@ -6,6 +6,9 @@
     <Setter Property="Margin" Value="15"/>
     <Setter Property="Spacing" Value="15"/>
   </Style>
+  <Style Selector=".modal DockPanel.content">
+    <Setter Property="Margin" Value="15"/>
+  </Style>
   <Style Selector=".modal > StackPanel.modalActions">
     <Setter Property="MaxHeight" Value="40"/>
     <Setter Property="Margin" Value="15"/>

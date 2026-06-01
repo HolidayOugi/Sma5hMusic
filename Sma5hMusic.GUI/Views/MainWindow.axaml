@@ -22,6 +22,7 @@
       <MenuItem Header="Project">
         <MenuItem Header="Build" Command="{Binding ActionBuildNoCache}"/>
         <MenuItem Header="Build [with cache]" Command="{Binding ActionBuild}"/>
+        <Separator></Separator>
         <MenuItem Header="Build CSK Packs" Command="{Binding ActionBuildCskPacks}"/>
         <Separator></Separator>
         <MenuItem Header="Refresh Data" Command="{Binding ActionRefreshData}"></MenuItem>
