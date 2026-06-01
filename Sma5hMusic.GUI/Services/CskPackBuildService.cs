@@ -718,8 +718,9 @@ namespace Sma5hMusic.GUI.Services
 
         private void GenerateCskPacks(IEnumerable<CskModContext> contexts, string generatedBgmFolder, string outputRoot, HashSet<string> selectedSeriesKeys, CskBuildResources buildResources)
         {
-            var allSeries = contexts.SelectMany(context => context.SeriesList).ToList();
-            var etcSelected = contexts.Any(context => context.SeriesList
+            var contextList = contexts.ToList();
+            var allSeries = contextList.SelectMany(context => context.SeriesList).ToList();
+            var etcSelected = contextList.Any(context => context.SeriesList
                 .Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series)))
                 .Any(IsEtcSeries));
             var seriesSoundOrder = BuildSeriesSoundOrder(
@@ -727,7 +728,7 @@ namespace Sma5hMusic.GUI.Services
                 buildResources.OrderOverride,
                 etcSelected);
 
-            foreach (var context in contexts)
+            foreach (var context in contextList)
             {
                 _logger.LogInformation("Generating CSK packs from {MetadataPath}", context.MetadataPath);
 
@@ -753,6 +754,13 @@ namespace Sma5hMusic.GUI.Services
                     _logger.LogInformation("[CSK] Saved {SeriesName}: {SavedPath}", GetString(series, "name_id", "<unknown>"), savedPath);
                 }
             }
+
+            GenerateSeriesOrderPack(
+                contextList,
+                outputRoot,
+                selectedSeriesKeys,
+                seriesSoundOrder,
+                buildResources.CoreSeriesOverride);
         }
 
         private void GenerateSingleCskPack(IEnumerable<CskModContext> contexts, string generatedBgmFolder, string outputRoot, HashSet<string> selectedSeriesKeys, CskBuildResources buildResources)
@@ -811,6 +819,13 @@ namespace Sma5hMusic.GUI.Services
                     buildResources.CoreBgmIds);
             }
 
+            var coreOnlyVanillaSeriesOrderEntries = CreateCoreOnlyVanillaSeriesOrderEntries(
+                contextList,
+                selectedSeriesKeys,
+                seriesSoundOrder,
+                buildResources.CoreSeriesOverride);
+            AddSeriesOrderEntries(songData, coreOnlyVanillaSeriesOrderEntries);
+
             NormalizeCombinedSongData(songData);
             WriteCombinedXmsbt(Path.Combine(uiFolder, "msg_bgm.xmsbt"), msgBgmEntries);
             WriteCombinedXmsbt(Path.Combine(uiFolder, "msg_title.xmsbt"), msgTitleEntries);
@@ -819,6 +834,110 @@ namespace Sma5hMusic.GUI.Services
             File.WriteAllText(outputJsonPath, JsonConvert.SerializeObject(songData, Formatting.Indented), new UTF8Encoding(false));
             _logger.LogInformation("[CSK] Saved single CSK pack: {SavedPath}", outputJsonPath);
         }
+
+        private void GenerateSeriesOrderPack(
+            List<CskModContext> contexts,
+            string outputRoot,
+            HashSet<string> selectedSeriesKeys,
+            Dictionary<string, int> seriesSoundOrder,
+            JObject coreSeriesOverride)
+        {
+            var seriesEntries = CreateCoreOnlyVanillaSeriesOrderEntries(
+                contexts,
+                selectedSeriesKeys,
+                seriesSoundOrder,
+                coreSeriesOverride);
+
+            if (seriesEntries.Count == 0)
+                return;
+
+            var packName = contexts
+                .Select(p => p.SafePackName)
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p)) ?? SinglePackFolderName;
+            var folderName = SanitizePathSegment($"{packName} - Series Order", "Series Order", "series order folder name");
+            var databaseFolder = Path.Combine(outputRoot, folderName, "database");
+            Directory.CreateDirectory(databaseFolder);
+
+            var songData = CreateSeriesOrderSongData(seriesEntries);
+            var outputJsonPath = Path.Combine(databaseFolder, "series_order.json");
+            File.WriteAllText(outputJsonPath, JsonConvert.SerializeObject(songData, Formatting.Indented), new UTF8Encoding(false));
+            _logger.LogInformation("[CSK] Saved series order pack: {SavedPath}", outputJsonPath);
+        }
+
+        private List<JObject> CreateCoreOnlyVanillaSeriesOrderEntries(
+            IEnumerable<CskModContext> contexts,
+            HashSet<string> selectedSeriesKeys,
+            Dictionary<string, int> seriesSoundOrder,
+            JObject coreSeriesOverride)
+        {
+            var customVanillaSeries = contexts
+                .SelectMany(context => context.SeriesList
+                    .Where(series => IsVanillaNonEtcSeries(GetString(series, "name_id")))
+                    .Where(SeriesHasCustomBgms)
+                    .Select(series => GetString(series, "name_id")))
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+            return _audioStateService.GetSeriesEntries()
+                .Where(series => IsVanillaNonEtcSeries(series.NameId))
+                .Where(series => !string.IsNullOrEmpty(series.UiSeriesId))
+                .Where(series => !customVanillaSeries.Contains(series.NameId))
+                .GroupBy(series => series.UiSeriesId, StringComparer.OrdinalIgnoreCase)
+                .Select(group => group
+                    .OrderBy(series => series.Source == EntrySource.Core ? 0 : 1)
+                    .First())
+                .Select(series =>
+                {
+                    var seriesObject = CreateSeriesObject(series);
+                    var dispOrderSound = GetSeriesSoundOrder(seriesSoundOrder, seriesObject);
+                    if (dispOrderSound > 127)
+                        dispOrderSound = 127;
+
+                    return CreateSeriesDatabaseEntry(seriesObject, coreSeriesOverride, dispOrderSound);
+                })
+                .OrderBy(entry => GetInt(entry, "disp_order_sound", 0))
+                .ThenBy(entry => GetString(entry, "name_id"), StringComparer.OrdinalIgnoreCase)
+                .ToList();
+        }
+
+        private static bool IsVanillaNonEtcSeries(string seriesName)
+        {
+            return !string.IsNullOrEmpty(seriesName) &&
+                   VanillaSeries.Contains(seriesName) &&
+                   !seriesName.StartsWith("etc", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private static bool SeriesHasCustomBgms(JObject series)
+        {
+            foreach (JObject game in GetArray(series, "games"))
+            {
+                foreach (JObject bgm in GetArray(game, "bgms"))
+                {
+                    var filename = GetString(bgm, "filename");
+                    if (!string.IsNullOrWhiteSpace(filename))
+                        return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static JObject CreateSeriesOrderSongData(IEnumerable<JObject> seriesEntries)
+        {
+            return new JObject
+            {
+                ["series_database_entries"] = new JArray(seriesEntries)
+            };
+        }
+
+        private static void AddSeriesOrderEntries(JObject songData, IEnumerable<JObject> seriesEntries)
+        {
+            var entries = GetArray(songData, "series_database_entries");
+
+            foreach (var entry in seriesEntries)
+                entries.Add((JObject)entry.DeepClone());
+        }
+
 
         private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride, bool etcSelected)
         {
@@ -870,7 +989,7 @@ namespace Sma5hMusic.GUI.Services
                 .Select(p => p.First().UiGameTitleId)
                 .ToList();
 
-            var index = 1;
+            var index = 0;
             foreach (var gameId in sortedGames)
             {
                 if (!gameEntries.ContainsKey(gameId))
@@ -932,7 +1051,7 @@ namespace Sma5hMusic.GUI.Services
                 var ranked = seriesMinOverride
                     .OrderBy(p => p.Value)
                     .ThenBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
-                    .Select((p, i) => new { p.Key, Index = i + 1 })
+                    .Select((p, i) => new { p.Key, Index = i })
                     .ToDictionary(p => p.Key, p => p.Index, StringComparer.OrdinalIgnoreCase);
 
                 foreach (var alias in aliases)
@@ -1091,7 +1210,7 @@ namespace Sma5hMusic.GUI.Services
             if (!string.IsNullOrEmpty(nameId) && seriesSoundOrder.ContainsKey(nameId))
                 return seriesSoundOrder[nameId];
 
-            return 1;
+            return 0;
         }
 
         private static void SetSeriesOrderKey(Dictionary<string, int> seriesOrder, string key, int value)
@@ -2468,9 +2587,9 @@ namespace Sma5hMusic.GUI.Services
 
         private static readonly HashSet<string> VanillaSeries = new HashSet<string>(new[]
         {
-            "none", "mario", "mariokart", "wreckingcrew", "donkeykong", "zelda",
+            "mario", "mariokart", "donkeykong", "zelda",
             "metroid", "yoshi", "kirby", "starfox", "pokemon", "fzero", "mother",
-            "fireemblem", "gamewatch", "palutena", "wario", "pikmin", "famicomrobot",
+            "fireemblem", "gamewatch", "palutena", "wario", "pikmin",
             "doubutsu", "wiifit", "punchout", "xenoblade", "metalgear", "sonic",
             "rockman", "pacman", "streetfighter", "finalfantasy", "bayonetta",
             "splatoon", "castlevania", "smashbros", "arms", "persona",
