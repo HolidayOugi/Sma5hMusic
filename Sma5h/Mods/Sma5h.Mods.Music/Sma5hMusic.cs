@@ -19,6 +19,7 @@ namespace Sma5h.Mods.Music
         private readonly IAudioStateService _audioStateService;
         private readonly IMusicModManagerService _musicModManagerService;
         private readonly INus3AudioService _nus3AudioService;
+        private const string SmashBattlePlaylistId = "bgmsmashbtl";
 
         public override string ModName => "Sma5hMusic";
 
@@ -222,42 +223,7 @@ namespace Sma5h.Mods.Music
                             foreach (var songToProcessMapping in songsToProcessMapping)
                             {
                                 songToProcessMapping.IsSelectableOriginal = true;
-                                bgmplaylist.Tracks.Add(new PlaylistValueEntry()
-                                {
-                                    UiBgmId = songToProcessMapping.UiBgmId,
-                                    Incidence0 = configIncidence,
-                                    Incidence1 = configIncidence,
-                                    Incidence2 = configIncidence,
-                                    Incidence3 = configIncidence,
-                                    Incidence4 = configIncidence,
-                                    Incidence5 = configIncidence,
-                                    Incidence6 = configIncidence,
-                                    Incidence7 = configIncidence,
-                                    Incidence8 = configIncidence,
-                                    Incidence9 = configIncidence,
-                                    Incidence10 = configIncidence,
-                                    Incidence11 = configIncidence,
-                                    Incidence12 = configIncidence,
-                                    Incidence13 = configIncidence,
-                                    Incidence14 = configIncidence,
-                                    Incidence15 = configIncidence,
-                                    Order0 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order0) + 1) : (short)0,
-                                    Order1 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order1) + 1) : (short)0,
-                                    Order2 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order2) + 1) : (short)0,
-                                    Order3 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order3) + 1) : (short)0,
-                                    Order4 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order4) + 1) : (short)0,
-                                    Order5 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order5) + 1) : (short)0,
-                                    Order6 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order6) + 1) : (short)0,
-                                    Order7 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order7) + 1) : (short)0,
-                                    Order8 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order8) + 1) : (short)0,
-                                    Order9 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order9) + 1) : (short)0,
-                                    Order10 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order10) + 1) : (short)0,
-                                    Order11 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order11) + 1) : (short)0,
-                                    Order12 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order12) + 1) : (short)0,
-                                    Order13 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order13) + 1) : (short)0,
-                                    Order14 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order14) + 1) : (short)0,
-                                    Order15 = bgmplaylist.Tracks.Count > 0 ? (short)(bgmplaylist.Tracks.Max(p => p.Order15) + 1) : (short)0
-                                });
+                                bgmplaylist.Tracks.Add(CreatePlaylistValueEntry(songToProcessMapping.UiBgmId, bgmplaylist, configIncidence));
                                 _logger.LogInformation("Playlist Auto-Mapping: Added BGM {UiBgmId} to Playlist {BgmPlaylist}.", songToProcessMapping.UiBgmId, mappingPlaylist);
                             }
 
@@ -271,6 +237,8 @@ namespace Sma5h.Mods.Music
                     }
                 }
 
+                ProcessSmashBattlePlaylistFallback(playlists, configIncidence);
+
                 //Check for empty playlists
                 if (generationMode == Sma5hMusicOptions.PlaylistGeneration.AllSongs)
                 {
@@ -283,6 +251,106 @@ namespace Sma5h.Mods.Music
             }
 
             return true;
+        }
+
+        private void ProcessSmashBattlePlaylistFallback(Dictionary<string, PlaylistEntry> playlists, ushort incidence)
+        {
+            if (!playlists.TryGetValue(SmashBattlePlaylistId, out var smashBattlePlaylist))
+            {
+                smashBattlePlaylist = new PlaylistEntry(SmashBattlePlaylistId);
+                if (!_audioStateService.AddPlaylistEntry(smashBattlePlaylist))
+                {
+                    _logger.LogWarning("Playlist Fallback: Playlist {PlaylistId} wasn't found and could not be created. Skipping fallback...", SmashBattlePlaylistId);
+                    return;
+                }
+
+                playlists[SmashBattlePlaylistId] = smashBattlePlaylist;
+            }
+
+            var songsInPlaylists = playlists.Values
+                .SelectMany(p => p.Tracks.Select(p2 => p2.UiBgmId))
+                .Where(p => !string.IsNullOrEmpty(p))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var gameToSeries = _audioStateService.GetGameTitleEntries()
+                .Where(p => !string.IsNullOrEmpty(p.UiGameTitleId))
+                .GroupBy(p => p.UiGameTitleId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(p => p.Key, p => p.First().UiSeriesId, StringComparer.OrdinalIgnoreCase);
+            var seriesEntries = _audioStateService.GetSeriesEntries()
+                .Where(p => !string.IsNullOrEmpty(p.UiSeriesId))
+                .GroupBy(p => p.UiSeriesId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(p => p.Key, p => p.First(), StringComparer.OrdinalIgnoreCase);
+
+            foreach (var bgmEntry in _audioStateService.GetBgmDbRootEntries()
+                .Where(p => p.TestDispOrder >= 0 && p.MusicMod != null && !songsInPlaylists.Contains(p.UiBgmId))
+                .OrderBy(p => p.TestDispOrder))
+            {
+                if (!IsNonVanillaSeries(bgmEntry, gameToSeries, seriesEntries))
+                    continue;
+
+                bgmEntry.IsSelectableOriginal = true;
+                smashBattlePlaylist.Tracks.Add(CreatePlaylistValueEntry(bgmEntry.UiBgmId, smashBattlePlaylist, incidence));
+                songsInPlaylists.Add(bgmEntry.UiBgmId);
+                _logger.LogInformation("Playlist Fallback: Added BGM {UiBgmId} to Playlist {BgmPlaylist}.", bgmEntry.UiBgmId, SmashBattlePlaylistId);
+            }
+        }
+
+        private static bool IsNonVanillaSeries(
+            BgmDbRootEntry bgmEntry,
+            Dictionary<string, string> gameToSeries,
+            Dictionary<string, SeriesEntry> seriesEntries)
+        {
+            if (string.IsNullOrEmpty(bgmEntry.UiGameTitleId) || !gameToSeries.TryGetValue(bgmEntry.UiGameTitleId, out var uiSeriesId))
+                return true;
+
+            if (string.IsNullOrEmpty(uiSeriesId) || !seriesEntries.TryGetValue(uiSeriesId, out var seriesEntry))
+                return true;
+
+            return seriesEntry.Source != EntrySource.Core;
+        }
+
+        private static PlaylistValueEntry CreatePlaylistValueEntry(string uiBgmId, PlaylistEntry playlist, ushort incidence)
+        {
+            return new PlaylistValueEntry
+            {
+                UiBgmId = uiBgmId,
+                Incidence0 = incidence,
+                Incidence1 = incidence,
+                Incidence2 = incidence,
+                Incidence3 = incidence,
+                Incidence4 = incidence,
+                Incidence5 = incidence,
+                Incidence6 = incidence,
+                Incidence7 = incidence,
+                Incidence8 = incidence,
+                Incidence9 = incidence,
+                Incidence10 = incidence,
+                Incidence11 = incidence,
+                Incidence12 = incidence,
+                Incidence13 = incidence,
+                Incidence14 = incidence,
+                Incidence15 = incidence,
+                Order0 = GetNextPlaylistOrder(playlist, p => p.Order0),
+                Order1 = GetNextPlaylistOrder(playlist, p => p.Order1),
+                Order2 = GetNextPlaylistOrder(playlist, p => p.Order2),
+                Order3 = GetNextPlaylistOrder(playlist, p => p.Order3),
+                Order4 = GetNextPlaylistOrder(playlist, p => p.Order4),
+                Order5 = GetNextPlaylistOrder(playlist, p => p.Order5),
+                Order6 = GetNextPlaylistOrder(playlist, p => p.Order6),
+                Order7 = GetNextPlaylistOrder(playlist, p => p.Order7),
+                Order8 = GetNextPlaylistOrder(playlist, p => p.Order8),
+                Order9 = GetNextPlaylistOrder(playlist, p => p.Order9),
+                Order10 = GetNextPlaylistOrder(playlist, p => p.Order10),
+                Order11 = GetNextPlaylistOrder(playlist, p => p.Order11),
+                Order12 = GetNextPlaylistOrder(playlist, p => p.Order12),
+                Order13 = GetNextPlaylistOrder(playlist, p => p.Order13),
+                Order14 = GetNextPlaylistOrder(playlist, p => p.Order14),
+                Order15 = GetNextPlaylistOrder(playlist, p => p.Order15)
+            };
+        }
+
+        private static short GetNextPlaylistOrder(PlaylistEntry playlist, Func<PlaylistValueEntry, short> orderSelector)
+        {
+            return playlist.Tracks.Count > 0 ? (short)(playlist.Tracks.Max(orderSelector) + 1) : (short)0;
         }
 
         private bool ProcessSeriesOrderAutoMapping()

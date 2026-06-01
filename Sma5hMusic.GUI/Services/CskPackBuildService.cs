@@ -22,8 +22,6 @@ namespace Sma5hMusic.GUI.Services
 {
     public class CskPackBuildService : ICskPackBuildService
     {
-        private const string CoreBgmCsv = "core_bgm.csv";
-        private const string VanillaGamesCsv = "vanilla_games.csv";
         private const string CskTempFolder = "_csk_temp";
         private const string CloneBgmId = "ui_bgm_a29_ppm_medley";
         private const string CloneSeriesId = "ui_series_mario";
@@ -172,26 +170,23 @@ namespace Sma5hMusic.GUI.Services
 
         private CskBuildResources LoadBuildResources()
         {
-            var resourcesPath = _config.CurrentValue.ResourcesPath;
             var overridePath = _config.CurrentValue.Sma5hMusicOverride.ModPath;
-            var coreBgmRows = ReadCoreBgmCsv(Path.Combine(resourcesPath, CoreBgmCsv));
             var orderOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_ORDER_JSON_FILE));
             var playlistOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_PLAYLIST_JSON_FILE));
             var coreBgmOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_BGM_JSON_FILE));
             var coreGameOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_GAME_JSON_FILE));
             var coreSeriesOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_CORE_SERIES_JSON_FILE));
             var stageOverride = LoadJsonObject(Path.Combine(overridePath, MusicConstants.MusicModFiles.MUSIC_OVERRIDE_STAGE_JSON_FILE));
+            var effectiveCoreGameOverride = BuildEffectiveCoreGameData(coreGameOverride);
 
             return new CskBuildResources
             {
-                CoreBgmRows = coreBgmRows,
-                VanillaGames = ReadVanillaGamesCsv(Path.Combine(resourcesPath, VanillaGamesCsv)),
-                ToneToSeriesMap = coreBgmRows.ToDictionary(p => $"ui_bgm_{p.ToneId}", p => p.Series, StringComparer.OrdinalIgnoreCase),
-                CoreToneIds = coreBgmRows.Select(p => $"ui_bgm_{p.ToneId}").ToHashSet(StringComparer.OrdinalIgnoreCase),
+                CoreGameSeriesById = BuildCoreGameSeriesById(effectiveCoreGameOverride),
+                CoreBgmIds = BuildCoreBgmIds(),
                 OrderOverride = BuildEffectiveOrderData(orderOverride),
                 PlaylistData = BuildEffectivePlaylistData(playlistOverride),
                 CoreBgmOverride = BuildEffectiveCoreBgmOverrideData(coreBgmOverride),
-                CoreGameOverride = BuildEffectiveCoreGameData(coreGameOverride),
+                CoreGameOverride = effectiveCoreGameOverride,
                 CoreSeriesOverride = BuildEffectiveCoreSeriesData(coreSeriesOverride),
                 StageOverride = BuildEffectiveStageData(stageOverride)
             };
@@ -206,6 +201,35 @@ namespace Sma5hMusic.GUI.Services
 
             OverlayProperties(orderData, orderOverride);
             return orderData;
+        }
+
+        private Dictionary<string, string> BuildCoreGameSeriesById(JObject effectiveCoreGameData)
+        {
+            var seriesNames = _audioStateService.GetSeriesEntries()
+                .Where(p => !string.IsNullOrEmpty(p.UiSeriesId))
+                .GroupBy(p => p.UiSeriesId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(p => p.Key, p => p.First().NameId, StringComparer.OrdinalIgnoreCase);
+
+            return _audioStateService.GetGameTitleEntries()
+                .Where(p => p.Source == EntrySource.Core && !string.IsNullOrEmpty(p.UiGameTitleId))
+                .GroupBy(p => p.UiGameTitleId, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(
+                    p => p.Key,
+                    p =>
+                    {
+                        var game = effectiveCoreGameData[p.Key] as JObject;
+                        var uiSeriesId = GetString(game, "ui_series_id", p.First().UiSeriesId);
+                        return GetSeriesNameFromUiSeriesId(uiSeriesId, seriesNames);
+                    },
+                    StringComparer.OrdinalIgnoreCase);
+        }
+
+        private HashSet<string> BuildCoreBgmIds()
+        {
+            return _audioStateService.GetBgmDbRootEntries()
+                .Where(p => p.Source == EntrySource.Core && !string.IsNullOrEmpty(p.UiBgmId))
+                .Select(p => p.UiBgmId)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
         }
 
         private JObject BuildEffectivePlaylistData(JObject playlistOverride)
@@ -683,8 +707,7 @@ namespace Sma5hMusic.GUI.Services
         {
             var seriesSoundOrder = BuildSeriesSoundOrder(
                 contexts.SelectMany(context => context.SeriesList),
-                buildResources.OrderOverride,
-                buildResources.CoreBgmRows);
+                buildResources.OrderOverride);
 
             foreach (var context in contexts)
             {
@@ -700,26 +723,25 @@ namespace Sma5hMusic.GUI.Services
                         buildResources.PlaylistData,
                         context.SeriesIdToName,
                         buildResources.CoreBgmOverride,
-                        buildResources.ToneToSeriesMap,
                         buildResources.OrderOverride,
-                        buildResources.VanillaGames,
+                        buildResources.CoreGameSeriesById,
                         seriesSoundOrder,
                         buildResources.StageOverride,
                         buildResources.CoreGameOverride,
                         buildResources.CoreSeriesOverride,
                         context.Metadata,
-                        buildResources.CoreToneIds);
+                        buildResources.CoreBgmIds);
 
                     _logger.LogInformation("[CSK] Saved {SeriesName}: {SavedPath}", GetString(series, "name_id", "<unknown>"), savedPath);
                 }
             }
         }
 
-        private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride, List<CoreBgmRow> coreBgmRows)
+        private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride)
         {
             var allSeries = seriesList.ToList();
             var seriesOrder = BuildSeriesSoundOrderFromAudioState(orderOverride);
-            var metadataOrder = BuildSeriesSoundOrderFromMetadata(allSeries, orderOverride, coreBgmRows);
+            var metadataOrder = BuildSeriesSoundOrderFromMetadata(allSeries, orderOverride);
 
             foreach (var series in allSeries)
             {
@@ -781,33 +803,17 @@ namespace Sma5hMusic.GUI.Services
             return output;
         }
 
-        private Dictionary<string, int> BuildSeriesSoundOrderFromMetadata(List<JObject> allSeries, JObject orderOverride, List<CoreBgmRow> coreBgmRows)
+        private Dictionary<string, int> BuildSeriesSoundOrderFromMetadata(List<JObject> allSeries, JObject orderOverride)
         {
             if (orderOverride != null && orderOverride.HasValues)
             {
                 var seriesMinOverride = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
                 var aliases = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-                foreach (var coreSeries in coreBgmRows
-                    .Where(p => !string.IsNullOrEmpty(p.Series))
-                    .GroupBy(p => p.Series, StringComparer.OrdinalIgnoreCase))
-                {
-                    var minValue = coreSeries
-                        .Select(p => GetInt(orderOverride, $"ui_bgm_{p.ToneId}", p.RowIndex))
-                        .DefaultIfEmpty(int.MaxValue)
-                        .Min();
-
-                    SetMinSeriesOrder(seriesMinOverride, coreSeries.Key, minValue);
-                    aliases[$"ui_series_{coreSeries.Key}"] = coreSeries.Key;
-                }
-
                 foreach (var series in allSeries)
                 {
                     var uiSeriesId = GetString(series, "ui_series_id");
                     var nameId = GetString(series, "name_id");
-                    var coreSeriesName = uiSeriesId.StartsWith("ui_series_", StringComparison.OrdinalIgnoreCase)
-                        ? uiSeriesId.Substring("ui_series_".Length)
-                        : nameId;
                     var bgmIdsToCheck = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
                     int? minValue = null;
 
@@ -820,12 +826,6 @@ namespace Sma5hMusic.GUI.Services
                             if (!string.IsNullOrEmpty(uiBgmId))
                                 bgmIdsToCheck.Add(uiBgmId);
                         }
-                    }
-
-                    if (VanillaSeries.Contains(coreSeriesName) || coreSeriesName == "classic_sonic")
-                    {
-                        foreach (var row in coreBgmRows.Where(p => string.Equals(p.Series, coreSeriesName, StringComparison.OrdinalIgnoreCase)))
-                            bgmIdsToCheck.Add($"ui_bgm_{row.ToneId}");
                     }
 
                     foreach (var uiBgmId in bgmIdsToCheck)
@@ -947,6 +947,15 @@ namespace Sma5hMusic.GUI.Services
             return overrideObject == null ? source : MergeObjects(source, overrideObject);
         }
 
+        private static bool ShouldAddGameTitleEntry(JObject game, string seriesName, Dictionary<string, string> coreGameSeriesById)
+        {
+            var uiGameTitleId = GetString(game, "ui_gametitle_id");
+            if (string.IsNullOrEmpty(uiGameTitleId) || !coreGameSeriesById.ContainsKey(uiGameTitleId))
+                return true;
+
+            return !string.Equals(coreGameSeriesById[uiGameTitleId], seriesName, StringComparison.OrdinalIgnoreCase);
+        }
+
         private string ProcessSeries(
             JObject series,
             string packName,
@@ -955,15 +964,14 @@ namespace Sma5hMusic.GUI.Services
             JObject playlistData,
             Dictionary<string, string> seriesIdToName,
             JObject coreBgmOverride,
-            Dictionary<string, string> toneToSeriesMap,
             JObject orderOverride,
-            Dictionary<string, string> vanillaGames,
+            Dictionary<string, string> coreGameSeriesById,
             Dictionary<string, int> seriesSoundOrder,
             JObject stageOverride,
             JObject coreGameOverride,
             JObject coreSeriesOverride,
             JObject metadata,
-            HashSet<string> coreToneIds)
+            HashSet<string> coreBgmIds)
         {
             var seriesName = GetString(series, "name_id");
             var orderCounter = GetNextPlaylistOrder(seriesName, playlistData);
@@ -1011,7 +1019,7 @@ namespace Sma5hMusic.GUI.Services
 
                 var effectiveGame = GetEffectiveOverrideObject(game, coreGameOverride, "ui_gametitle_id");
                 var gameName = GetString(effectiveGame, "name_id", GetString(game, "name_id"));
-                if (!vanillaGames.ContainsKey(gameName) || vanillaGames[gameName] != seriesName)
+                if (ShouldAddGameTitleEntry(effectiveGame, seriesName, coreGameSeriesById))
                     AddGameTitleEntry(songData, effectiveGame);
 
                 var gameTitle = GetString(effectiveGame["msbt_title"], "us_en", gameName);
@@ -1022,8 +1030,8 @@ namespace Sma5hMusic.GUI.Services
             }
 
             ProcessCoreGameMovedBgms(series, metadata, coreGameOverride, songData, playlistData, msgBgmEntries, msgTitleEntries, orderOverride, seriesName, seriesFolderName, outputRoot, generatedBgmFolder, ref orderCounter);
-            ProcessPlaylistsAndStages(songData, seriesName, playlistData, stageOverride, coreToneIds);
-            ProcessCoreBgmOverrides(songData, msgBgmEntries, msgTitleEntries, seriesName, seriesIdToName, coreBgmOverride, toneToSeriesMap, orderOverride, coreGameOverride);
+            ProcessPlaylistsAndStages(songData, seriesName, playlistData, stageOverride, coreBgmIds);
+            ProcessCoreBgmOverrides(songData, msgBgmEntries, msgTitleEntries, seriesName, seriesIdToName, coreBgmOverride, orderOverride, coreGameOverride);
             AddCoreGameOverridesForNewSeries(songData, series, seriesName, coreGameOverride);
 
             var outputJsonPath = Path.Combine(seriesDbFolder, $"{SanitizePathSegment(seriesName, "series", "series database file name")}.json");
@@ -1174,11 +1182,9 @@ namespace Sma5hMusic.GUI.Services
         }
 
         private static string GetCoreBgmSeriesName(
-            string uiBgmId,
             string uiGameTitleId,
             string dbSeriesId,
             Dictionary<string, string> seriesIdToName,
-            Dictionary<string, string> toneToSeriesMap,
             JObject coreGameOverride)
         {
             var gameOverride = coreGameOverride != null && !string.IsNullOrEmpty(uiGameTitleId)
@@ -1188,9 +1194,6 @@ namespace Sma5hMusic.GUI.Services
             var gameSeriesName = GetSeriesNameFromUiSeriesId(gameSeriesId, seriesIdToName);
             if (!string.IsNullOrEmpty(gameSeriesName))
                 return gameSeriesName;
-
-            if (toneToSeriesMap.ContainsKey(uiBgmId))
-                return toneToSeriesMap[uiBgmId];
 
             return GetSeriesNameFromUiSeriesId(dbSeriesId, seriesIdToName);
         }
@@ -1215,7 +1218,6 @@ namespace Sma5hMusic.GUI.Services
             string seriesName,
             Dictionary<string, string> seriesIdToName,
             JObject coreBgmOverride,
-            Dictionary<string, string> toneToSeriesMap,
             JObject orderOverride,
             JObject coreGameOverride)
         {
@@ -1238,7 +1240,7 @@ namespace Sma5hMusic.GUI.Services
                 var db = dbProperty.Value as JObject;
                 var dbSeriesId = GetString(db, "ui_series_id");
                 var uiGameTitleId = GetString(db, "ui_gametitle_id");
-                var coreSeries = GetCoreBgmSeriesName(uiBgmId, uiGameTitleId, dbSeriesId, seriesIdToName, toneToSeriesMap, coreGameOverride);
+                var coreSeries = GetCoreBgmSeriesName(uiGameTitleId, dbSeriesId, seriesIdToName, coreGameOverride);
 
                 if (coreSeries != seriesName)
                     continue;
@@ -1305,11 +1307,11 @@ namespace Sma5hMusic.GUI.Services
             }
         }
 
-        private void ProcessPlaylistsAndStages(JObject songData, string seriesName, JObject playlistData, JObject stageOverride, HashSet<string> coreToneIds)
+        private void ProcessPlaylistsAndStages(JObject songData, string seriesName, JObject playlistData, JObject stageOverride, HashSet<string> coreBgmIds)
         {
             if (VanillaSeries.Contains(seriesName))
             {
-                PopulateVanillaPlaylists(songData, seriesName, playlistData, coreToneIds);
+                PopulateVanillaPlaylists(songData, seriesName, playlistData, coreBgmIds);
                 if (stageOverride != null)
                     PopulateStageDatabaseEntries(songData, seriesName, stageOverride, playlistData);
                 return;
@@ -1405,7 +1407,7 @@ namespace Sma5hMusic.GUI.Services
             }
         }
 
-        private void PopulateVanillaPlaylists(JObject songData, string seriesName, JObject playlistData, HashSet<string> coreToneIds)
+        private void PopulateVanillaPlaylists(JObject songData, string seriesName, JObject playlistData, HashSet<string> coreBgmIds)
         {
             var playlists = SeriesToPlaylist.ContainsKey(seriesName.ToLowerInvariant())
                 ? SeriesToPlaylist[seriesName.ToLowerInvariant()]
@@ -1419,7 +1421,7 @@ namespace Sma5hMusic.GUI.Services
                 foreach (JObject track in tracks)
                 {
                     var uiBgmId = GetString(track, "ui_bgm_id");
-                    if (!coreToneIds.Contains(uiBgmId))
+                    if (!coreBgmIds.Contains(uiBgmId))
                         continue;
 
                     var entry = new JObject { ["ui_bgm_id"] = uiBgmId };
@@ -1705,90 +1707,6 @@ namespace Sma5hMusic.GUI.Services
             return JObject.Parse(File.ReadAllText(path));
         }
 
-        private List<CoreBgmRow> ReadCoreBgmCsv(string path)
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException($"Required CSV not found: {path}", path);
-
-            var rows = ReadCsv(path);
-            return rows.Select((p, index) => new CoreBgmRow
-            {
-                ToneId = p.ContainsKey("Tone ID") ? p["Tone ID"] : string.Empty,
-                Series = p.ContainsKey("Series") ? p["Series"] : string.Empty,
-                RowIndex = index
-            }).Where(p => !string.IsNullOrEmpty(p.ToneId)).ToList();
-        }
-
-        private Dictionary<string, string> ReadVanillaGamesCsv(string path)
-        {
-            if (!File.Exists(path))
-                throw new FileNotFoundException($"Required CSV not found: {path}", path);
-
-            return ReadCsv(path)
-                .Where(p => p.ContainsKey("game") && p.ContainsKey("series"))
-                .GroupBy(p => p["game"], StringComparer.OrdinalIgnoreCase)
-                .ToDictionary(p => p.Key, p => p.First()["series"], StringComparer.OrdinalIgnoreCase);
-        }
-
-        private static List<Dictionary<string, string>> ReadCsv(string path)
-        {
-            var lines = File.ReadAllLines(path);
-            if (lines.Length == 0)
-                return new List<Dictionary<string, string>>();
-
-            var headers = SplitCsvLine(lines[0]).ToList();
-            var rows = new List<Dictionary<string, string>>();
-            for (var i = 1; i < lines.Length; i++)
-            {
-                if (string.IsNullOrWhiteSpace(lines[i]))
-                    continue;
-
-                var values = SplitCsvLine(lines[i]).ToList();
-                var row = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-                for (var h = 0; h < headers.Count; h++)
-                    row[headers[h]] = h < values.Count ? values[h] : string.Empty;
-                rows.Add(row);
-            }
-
-            return rows;
-        }
-
-        private static IEnumerable<string> SplitCsvLine(string line)
-        {
-            var output = new List<string>();
-            var current = new StringBuilder();
-            var inQuotes = false;
-
-            for (var i = 0; i < line.Length; i++)
-            {
-                var c = line[i];
-                if (c == '"')
-                {
-                    if (inQuotes && i + 1 < line.Length && line[i + 1] == '"')
-                    {
-                        current.Append('"');
-                        i++;
-                    }
-                    else
-                    {
-                        inQuotes = !inQuotes;
-                    }
-                }
-                else if (c == ',' && !inQuotes)
-                {
-                    output.Add(current.ToString());
-                    current.Clear();
-                }
-                else
-                {
-                    current.Append(c);
-                }
-            }
-
-            output.Add(current.ToString());
-            return output;
-        }
-
         private static void AddOptionalBgmMessage(List<string> entries, string label, JToken localizedText)
         {
             var text = GetString(localizedText, "us_en");
@@ -1951,13 +1869,6 @@ namespace Sma5hMusic.GUI.Services
             return string.IsNullOrWhiteSpace(title) ? seriesName : title;
         }
 
-        private class CoreBgmRow
-        {
-            public string ToneId { get; set; }
-            public string Series { get; set; }
-            public int RowIndex { get; set; }
-        }
-
         private class CskModContext
         {
             public IMusicMod Mod { get; set; }
@@ -1971,10 +1882,8 @@ namespace Sma5hMusic.GUI.Services
 
         private class CskBuildResources
         {
-            public List<CoreBgmRow> CoreBgmRows { get; set; }
-            public Dictionary<string, string> VanillaGames { get; set; }
-            public Dictionary<string, string> ToneToSeriesMap { get; set; }
-            public HashSet<string> CoreToneIds { get; set; }
+            public Dictionary<string, string> CoreGameSeriesById { get; set; }
+            public HashSet<string> CoreBgmIds { get; set; }
             public JObject PlaylistData { get; set; }
             public JObject OrderOverride { get; set; }
             public JObject CoreBgmOverride { get; set; }
