@@ -124,11 +124,11 @@ namespace Sma5hMusic.GUI.Services
 
                     _logger.LogInformation("Creating full 48kHz WAV for loop preview before trimming. Input={InputFile}, Output={SourceWavFile}.",
                         filename, sourceWavFile);
-                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), sourceWavFile);
+                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", sourceWavFile);
 
                     ExtractWavSegment(sourceWavFile, endingWavFile, requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, TargetSampleRate);
                     ExtractWavSegment(sourceWavFile, restartWavFile, loopStart48k, restartPreviewDuration48k, TargetSampleRate);
-                    RunTool(GetSoxExe(), "--combine", "concatenate", endingWavFile, restartWavFile, tempWavFile);
+                    RunTool(GetSoxExe(), "--combine", "concatenate", endingWavFile, restartWavFile, "-b", "16", "-e", "signed-integer", tempWavFile);
                     File.Move(tempWavFile, previewFile);
 
                     _logger.LogInformation("Loop preview WAV created in playback order. EndingSegmentStart48k={EndingStart48k}, EndingDuration48k={EndingDuration48k}, RestartSegmentStart48k={RestartStart48k}, RestartDuration48k={RestartDuration48k}.",
@@ -208,7 +208,7 @@ namespace Sma5hMusic.GUI.Services
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
 
                     _logger.LogInformation("Converting {InputFile} to WAV 48kHz for import.", filename);
-                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), tempWavFile);
+                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", tempWavFile);
 
                     _logger.LogInformation("Encoding temporary LOPUS with loop {LoopStart}-{LoopEnd}.", loopStart48k, loopEnd48k);
                     RunTool(GetVGAudioCliExe(), tempWavFile, tempLopusFile, "-l", $"{loopStart48k}-{loopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
@@ -248,7 +248,7 @@ namespace Sma5hMusic.GUI.Services
 
             try
             {
-                RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), tempWavFile);
+                RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", tempWavFile);
                 var output = RunTool(GetVgmStreamExe(), "-m", tempWavFile);
                 var match = Regex.Match(output, @"stream total samples:\s*(\d+)", RegexOptions.IgnoreCase);
 
@@ -485,7 +485,7 @@ namespace Sma5hMusic.GUI.Services
             var durationSourceSample = Math.Max(1u, ConvertSampleRate(durationSamples48k, TargetSampleRate, sourceSampleRate));
             _logger.LogInformation("Extracting preview WAV segment. Input={InputFile}, Output={OutputFile}, Start48k={Start48k}, Duration48k={Duration48k}, StartSource={StartSource}, DurationSource={DurationSource}.",
                 inputFile, outputFile, startSample48k, durationSamples48k, startSourceSample, durationSourceSample);
-            RunTool(GetSoxExe(), inputFile, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), outputFile, "trim", $"{startSourceSample}s", $"{durationSourceSample}s");
+            RunTool(GetSoxExe(), inputFile, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", outputFile, "trim", $"{startSourceSample}s", $"{durationSourceSample}s");
         }
 
         private string GetSoxExe()
