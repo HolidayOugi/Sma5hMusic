@@ -75,19 +75,16 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         private static string GetString(JToken token, string key, string fallback = "")
         {
-            if (token == null)
+            var value = GetChildValue(token, key);
+            if (value == null || value.Type == JTokenType.Null)
                 return fallback;
 
-            var value = token[key];
-            return value == null || value.Type == JTokenType.Null ? fallback : value.ToString();
+            return value.ToString();
         }
 
         private static int GetInt(JToken token, string key, int fallback)
         {
-            if (token == null)
-                return fallback;
-
-            var value = token[key];
+            var value = GetChildValue(token, key);
             if (value == null || value.Type == JTokenType.Null)
                 return fallback;
 
@@ -97,10 +94,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         private static float GetFloat(JToken token, string key, float fallback)
         {
-            if (token == null)
-                return fallback;
-
-            var value = token[key];
+            var value = GetChildValue(token, key);
             if (value == null || value.Type == JTokenType.Null)
                 return fallback;
 
@@ -110,10 +104,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         private static bool GetBool(JToken token, string key, bool fallback)
         {
-            if (token == null)
-                return fallback;
-
-            var value = token[key];
+            var value = GetChildValue(token, key);
             if (value == null || value.Type == JTokenType.Null)
                 return fallback;
 
@@ -127,10 +118,13 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         private static JArray GetArray(JToken token, string key)
         {
-            if (token == null)
-                return new JArray();
+            return GetChildValue(token, key) as JArray ?? new JArray();
+        }
 
-            return token[key] as JArray ?? new JArray();
+        private static JToken GetChildValue(JToken token, string key)
+        {
+            var obj = token as JObject;
+            return obj == null ? null : obj[key];
         }
 
         #endregion
