@@ -3,10 +3,12 @@ using Sma5h.Mods.Music.Interfaces;
 using System;
 using System.Collections.Generic;
 
-namespace Sma5hMusic.GUI.Services
+namespace Sma5h.Mods.Music.CskPackBuild
 {
     public partial class CskPackBuildService
     {
+        #region Types
+
         private class CskModContext
         {
             public IMusicMod Mod { get; set; }
@@ -42,6 +44,10 @@ namespace Sma5hMusic.GUI.Services
             Modular,
             Single
         }
+
+        #endregion
+
+        #region Series Sets
 
         private static readonly HashSet<string> DlcSeries = new HashSet<string>(new[]
         {
@@ -102,5 +108,7 @@ namespace Sma5hMusic.GUI.Services
             ["yoshi"] = new List<string> { "bgmyoshi" },
             ["zelda"] = new List<string> { "bgmzelda" }
         };
+
+        #endregion
     }
 }

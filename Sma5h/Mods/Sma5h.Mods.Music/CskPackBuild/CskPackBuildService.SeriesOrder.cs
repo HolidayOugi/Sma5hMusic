@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Sma5h.Mods.Music;
 using Sma5h.Mods.Music.Models;
 using System;
 using System.Collections.Generic;
@@ -8,10 +9,12 @@ using System.IO;
 using System.Linq;
 using System.Text;
 
-namespace Sma5hMusic.GUI.Services
+namespace Sma5h.Mods.Music.CskPackBuild
 {
     public partial class CskPackBuildService
     {
+        #region Generation
+
         private void GenerateSeriesOrderPack(
             List<CskModContext> contexts,
             string outputRoot,
@@ -41,6 +44,10 @@ namespace Sma5hMusic.GUI.Services
             _logger.LogInformation("[CSK] Saved series order pack: {SavedPath}", outputJsonPath);
         }
 
+        #endregion
+
+        #region Series Entries
+
         private List<JObject> CreateCoreOnlyVanillaSeriesOrderEntries(
             IEnumerable<CskModContext> contexts,
             HashSet<string> selectedSeriesKeys,
@@ -49,20 +56,11 @@ namespace Sma5hMusic.GUI.Services
         {
             var excludedVanillaSeries = contexts
                 .SelectMany(context => context.SeriesList
-                    .Where(series => IsVanillaSeries(GetString(series, "name_id")) && !IsEtcSeries(series))
+                    .Where(series => IsVanillaSeries(GetString(series, "name_id")))
                     .Where(SeriesHasCustomBgms)
                     .Select(series => GetString(series, "name_id")))
                 .Where(p => !string.IsNullOrEmpty(p))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var etcSeries in contexts.SelectMany(context => context.SeriesList
-                .Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series)))
-                .Where(IsEtcSeries)
-                .Select(series => GetString(series, "name_id"))))
-            {
-                if (!string.IsNullOrEmpty(etcSeries))
-                    excludedVanillaSeries.Add(etcSeries);
-            }
 
             return _audioStateService.GetSeriesEntries()
                 .Where(series => IsVanillaSeries(series.NameId))
@@ -122,6 +120,10 @@ namespace Sma5hMusic.GUI.Services
             foreach (var entry in seriesEntries)
                 entries.Add((JObject)entry.DeepClone());
         }
+
+        #endregion
+
+        #region Sound Order
 
         private Dictionary<string, int> BuildSeriesSoundOrder(IEnumerable<JObject> seriesList, JObject orderOverride)
         {
@@ -244,7 +246,7 @@ namespace Sma5hMusic.GUI.Services
                 return ranked;
             }
 
-            var firstCustomOrder = (GetEtcDispOrderSound() ?? 38) + 1;
+            var firstCustomOrder = 39;
 
             return allSeries
                 .Where(p => !VanillaSeries.Contains(GetString(p, "name_id")))
@@ -265,25 +267,9 @@ namespace Sma5hMusic.GUI.Services
                 .ToDictionary(p => p.Key, p => p.First().Order, StringComparer.OrdinalIgnoreCase);
         }
 
-        private int? GetEtcDispOrderSound()
-        {
-            return _audioStateService.GetSeriesEntries()
-                .Where(p => p.DispOrderSound > -1 && IsEtcSeries(p.NameId, p.UiSeriesId))
-                .OrderBy(p => p.Source == EntrySource.Core ? 0 : 1)
-                .Select(p => (int?)p.DispOrderSound)
-                .FirstOrDefault();
-        }
+        #endregion
 
-        private static bool IsEtcSeries(JObject series)
-        {
-            return IsEtcSeries(GetString(series, "name_id"), GetString(series, "ui_series_id"));
-        }
-
-        private static bool IsEtcSeries(string nameId, string uiSeriesId)
-        {
-            return string.Equals(uiSeriesId, "ui_series_etc", StringComparison.OrdinalIgnoreCase) ||
-                   (!string.IsNullOrEmpty(nameId) && nameId.StartsWith("etc", StringComparison.OrdinalIgnoreCase));
-        }
+        #region Helpers
 
         private static int GetSeriesSoundOrder(Dictionary<string, int> seriesSoundOrder, JObject series)
         {
@@ -326,13 +312,13 @@ namespace Sma5hMusic.GUI.Services
                 ["ui_series_id"] = GetString(effectiveSeries, "ui_series_id", uiSeriesId),
                 ["clone_from_series_id"] = CloneSeriesId,
                 ["name_id"] = GetString(effectiveSeries, "name_id", seriesName),
-                ["disp_order"] = 0,
+                ["disp_order"] = GetInt(effectiveSeries, "disp_order", 0),
                 ["disp_order_sound"] = dispOrderSound,
-                ["save_no"] = 0,
+                ["save_no"] = GetInt(effectiveSeries, "save_no", 0),
                 ["shown_as_series_in_directory"] = false,
                 ["is_dlc"] = GetBool(effectiveSeries, "is_dlc", isDlcSeries),
                 ["is_patch"] = GetBool(effectiveSeries, "is_patch", isDlcSeries),
-                ["is_use_amiibo_bg"] = false
+                ["is_use_amiibo_bg"] = GetBool(effectiveSeries, "is_use_amiibo_bg", false)
             };
 
             var dlcCharaId = GetString(effectiveSeries, "dlc_chara_id");
@@ -341,5 +327,7 @@ namespace Sma5hMusic.GUI.Services
 
             return entry;
         }
+
+        #endregion
     }
 }

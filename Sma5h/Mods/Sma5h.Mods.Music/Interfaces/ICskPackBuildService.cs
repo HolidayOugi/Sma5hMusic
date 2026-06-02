@@ -1,8 +1,8 @@
-using Sma5hMusic.GUI.Models;
+using Sma5h.Mods.Music.Models;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace Sma5hMusic.GUI.Interfaces
+namespace Sma5h.Mods.Music.Interfaces
 {
     public interface ICskPackBuildService
     {

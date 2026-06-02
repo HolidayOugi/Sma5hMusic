@@ -4,7 +4,7 @@ using System.Globalization;
 using System.Text;
 using System.Text.RegularExpressions;
 
-namespace Sma5hMusic.GUI.Helpers
+namespace Sma5h.Mods.Music.Helpers
 {
     public static class CskPathSanitizer
     {

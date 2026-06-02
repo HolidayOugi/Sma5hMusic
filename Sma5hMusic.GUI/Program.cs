@@ -84,7 +84,6 @@ namespace Sma5hMusic.GUI
             //Add UI Services
             services.Configure<ApplicationSettings>(configuration);
             services.AddSingleton<IDevToolsService, DevToolsService>();
-            services.AddSingleton<ICskPackBuildService, CskPackBuildService>();
             services.AddSingleton<ISeriesIconService, SeriesIconService>();
             services.AddSingleton<IVGMMusicPlayer, VGMMusicPlayer>();
             services.AddSingleton<IFileDialog, FileDialog>();

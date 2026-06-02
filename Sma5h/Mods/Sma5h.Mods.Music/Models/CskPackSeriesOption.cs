@@ -1,4 +1,4 @@
-namespace Sma5hMusic.GUI.Models
+namespace Sma5h.Mods.Music.Models
 {
     public class CskPackSeriesOption
     {

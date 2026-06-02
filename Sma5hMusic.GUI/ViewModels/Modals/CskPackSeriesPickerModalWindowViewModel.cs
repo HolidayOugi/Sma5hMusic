@@ -1,6 +1,6 @@
 using Avalonia.Controls;
 using ReactiveUI;
-using Sma5hMusic.GUI.Models;
+using Sma5h.Mods.Music.Models;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
