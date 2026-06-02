@@ -23,8 +23,15 @@
       <StackPanel IsVisible="{Binding IsAudioImport}">
         <fields:PropertyUIntField Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
         <fields:PropertyUIntField Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
+        <fields:PropertyUIntField Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
+        <fields:PropertyUIntField x:Name="LoopStartMs" Label="Loop start ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in milliseconds. Samples are updated from the detected sample rate." />
         <fields:PropertyUIntField x:Name="LoopStartSample" Label="Loop start sample" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in source-file samples. It is converted to 48kHz before encoding." />
+        <fields:PropertyUIntField x:Name="LoopEndMs" Label="Loop end ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in milliseconds. Samples are updated from the detected sample rate." />
         <fields:PropertyUIntField x:Name="LoopEndSample" Label="Loop end sample" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in source-file samples." />
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+          <Button Content="Preview loop" Command="{Binding ActionPreviewLoop}" />
+          <Button Content="Stop preview" Command="{Binding ActionStopPreview}" />
+        </StackPanel>
       </StackPanel>
     </StackPanel>
   </DockPanel>

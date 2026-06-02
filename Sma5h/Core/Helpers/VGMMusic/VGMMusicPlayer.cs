@@ -30,6 +30,8 @@ namespace VGMMusic
 
         public async Task<bool> LoadFile(string filename)
         {
+            _logger.LogInformation("VGMMusicPlayer LoadFile requested. File={FileName}", filename);
+
             //Test file exist
             if (!File.Exists(filename))
             {
@@ -37,10 +39,13 @@ namespace VGMMusic
                 return false;
             }
 
+            _logger.LogInformation("VGMMusicPlayer input exists. Length={Length}", new FileInfo(filename).Length);
+
             //Dispose current stream, if exist
             await Stop();
 
             //Attempt to load file
+            _logger.LogInformation("Creating VGMStreamReader for {FileName}.", filename);
             _reader = new VGMStreamReader(filename);
 
             if (!_reader.FileLoaded)
@@ -50,6 +55,8 @@ namespace VGMMusic
             }
 
             _filename = filename;
+            _logger.LogInformation("VGMStreamReader loaded. TotalSamples={TotalSamples}, TotalSamplesToPlay={TotalSamplesToPlay}, TotalSecondsToPlay={TotalSecondsToPlay}, LoopStart={LoopStart}, LoopEnd={LoopEnd}",
+                _reader.TotalSamples, _reader.TotalSamplesToPlay, _reader.TotalSecondsToPlay, _reader.LoopStartSample, _reader.LoopEndSample);
 
             return true;
         }
@@ -72,6 +79,8 @@ namespace VGMMusic
 
         public bool Play()
         {
+            _logger.LogInformation("VGMMusicPlayer Play requested. Loaded={Loaded}, IsPlaying={IsPlaying}", Loaded, IsPlaying);
+
             if (!Loaded)
             {
                 _logger.LogError("Error starting playback. The stream is not ready.");
@@ -79,14 +88,31 @@ namespace VGMMusic
             }
 
             Task.Run(() => { InternalPlay(); });
+            _logger.LogInformation("VGMMusicPlayer playback task started for {FileName}.", _filename);
 
             return true;
         }
 
         public async Task<bool> Play(string filename)
         {
+            _logger.LogInformation("VGMMusicPlayer Play file requested. File={FileName}", filename);
+
             if (await LoadFile(filename))
             {
+                return Play();
+            }
+            return false;
+        }
+
+        public async Task<bool> Play(string filename, int startSample)
+        {
+            _logger.LogInformation("VGMMusicPlayer Play file from sample requested. File={FileName}, StartSample={StartSample}", filename, startSample);
+
+            if (await LoadFile(filename))
+            {
+                _logger.LogInformation("Seeking preview to sample {StartSample}.", startSample);
+                _reader.SeekToSample(startSample);
+                _logger.LogInformation("Seek complete. CurrentPosition={Position}", _reader.Position);
                 return Play();
             }
             return false;
@@ -107,6 +133,9 @@ namespace VGMMusic
 
         public async Task<bool> Stop()
         {
+            _logger.LogInformation("VGMMusicPlayer Stop requested. ReaderExists={ReaderExists}, IsPlaying={IsPlaying}, RequestStop={RequestStop}",
+                _reader != null, IsPlaying, _requestStop);
+
             if (_reader != null && IsPlaying)
             {
                 _requestStop = true;
@@ -120,6 +149,7 @@ namespace VGMMusic
                 InternalStop();
             }
 
+            _logger.LogInformation("VGMMusicPlayer Stop completed. IsPlaying={IsPlaying}, RequestStop={RequestStop}", IsPlaying, _requestStop);
             return true;
         }
 
@@ -127,17 +157,21 @@ namespace VGMMusic
         {
             try
             {
+                _logger.LogInformation("InternalPlay starting. File={FileName}", _filename);
                 _outputDevice = new WaveOutEvent();
                 if (_reader != null)
                 {
+                    _logger.LogInformation("Initializing WaveOutEvent. WaveFormat={WaveFormat}, Position={Position}", _reader.WaveFormat, _reader.Position);
                     _outputDevice.Init(_reader);
                     _outputDevice.Volume = Volume;
                     _outputDevice.Play();
                     IsPlaying = true;
+                    _logger.LogInformation("WaveOutEvent started. PlaybackState={PlaybackState}, Volume={Volume}", _outputDevice.PlaybackState, _outputDevice.Volume);
                     while (_outputDevice.PlaybackState == PlaybackState.Playing && !_requestStop)
                     {
                         Thread.Sleep(500);
                     }
+                    _logger.LogInformation("Playback loop ended. PlaybackState={PlaybackState}, RequestStop={RequestStop}", _outputDevice.PlaybackState, _requestStop);
                 }
                 _requestStop = false;
 
@@ -168,12 +202,14 @@ namespace VGMMusic
 
         private void InternalStop()
         {
+            _logger.LogInformation("InternalStop starting. OutputDeviceExists={OutputDeviceExists}, ReaderExists={ReaderExists}", _outputDevice != null, _reader != null);
             _outputDevice?.Dispose();
             _outputDevice = null;
             _reader?.Dispose();
             _reader = null;
             _requestStop = false;
             IsPlaying = false;
+            _logger.LogInformation("InternalStop completed.");
         }
 
         public void Dispose()

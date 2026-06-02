@@ -8,6 +8,7 @@ namespace VGMMusic.Native
     /// </summary>
     public static class VGMStreamNative
     {
+        private const string DllName = "libvgmstream";
         private static bool _vgmStreamLoaded = false;
         public static bool VGMStreamLoaded { get { return _vgmStreamLoaded; } }
 
@@ -39,6 +40,16 @@ namespace VGMMusic.Native
         public static void ResetVGMStream(IntPtr vgmstream)
         {
             reset_vgmstream(vgmstream);
+        }
+
+        /// <summary>
+        /// Seeks a given VGMSTREAM to an absolute sample position.
+        /// </summary>
+        /// <param name="vgmstream">The VGMSTREAM to seek.</param>
+        /// <param name="sample">The absolute sample to seek to.</param>
+        public static void SeekVGMStream(IntPtr vgmstream, int sample)
+        {
+            seek_vgmstream(vgmstream, sample);
         }
 
         /// <summary>
@@ -178,12 +189,14 @@ namespace VGMMusic.Native
 
         #region P/Invoke Methods
 
-        private const string DllName = "libvgmstream";
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr init_vgmstream(string filename);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern void reset_vgmstream(IntPtr vgmstream);
+
+        [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
+        private static extern void seek_vgmstream(IntPtr vgmstream, int sample);
 
         [DllImport(DllName, CallingConvention = CallingConvention.Cdecl)]
         private static extern IntPtr allocate_vgmstream(int channel_count, int looped);

@@ -56,6 +56,58 @@ namespace Sma5hMusic.GUI.Services
             });
         }
 
+        public async Task<LoopPreviewInfo> CreateLoopPreview(string filename, uint loopStartSample, uint loopEndSample, uint totalSamples)
+        {
+            return await Task.Run(() =>
+            {
+                _logger.LogInformation("Loop preview requested for {Filename}. LoopStartSample={LoopStartSample}, LoopEndSample={LoopEndSample}, TotalSamples={TotalSamples}.",
+                    filename, loopStartSample, loopEndSample, totalSamples);
+
+                var info = GetAudioInfo(filename).GetAwaiter().GetResult();
+                _logger.LogInformation("Loop preview source info: SampleRate={SampleRate}, TotalSamples={DetectedTotalSamples}.", info.SampleRate, info.TotalSamples);
+
+                if (loopEndSample == 0 || loopEndSample > totalSamples)
+                    throw new InvalidOperationException($"Loop end sample must be between 1 and {totalSamples}.");
+
+                if (loopStartSample > loopEndSample)
+                    throw new InvalidOperationException("Loop start sample must be lower than or equal to loop end sample.");
+
+                Directory.CreateDirectory(GetTempPath());
+
+                var tempId = Guid.NewGuid().ToString("N");
+                var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
+                var previewFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
+
+                try
+                {
+                    var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
+                    var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
+                    var preRollSamples = Math.Max(1u, (uint)Math.Round(loopEnd48k * 0.1));
+                    var previewStartSample = loopEnd48k > preRollSamples ? loopEnd48k - preRollSamples : 0;
+                    _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, PreviewStartSample={PreviewStartSample}.",
+                        loopStart48k, loopEnd48k, previewStartSample);
+
+                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), tempWavFile);
+                    _logger.LogInformation("Loop preview temp WAV created: {TempWavFile}. Exists={Exists}, Length={Length}.",
+                        tempWavFile, File.Exists(tempWavFile), File.Exists(tempWavFile) ? new FileInfo(tempWavFile).Length : 0);
+
+                    RunTool(GetVGAudioCliExe(), tempWavFile, previewFile, "-l", $"{loopStart48k}-{loopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
+                    _logger.LogInformation("Loop preview LOPUS created: {PreviewFile}. Exists={Exists}, Length={Length}.",
+                        previewFile, File.Exists(previewFile), File.Exists(previewFile) ? new FileInfo(previewFile).Length : 0);
+
+                    return new LoopPreviewInfo
+                    {
+                        Filename = previewFile,
+                        StartSample = (int)previewStartSample
+                    };
+                }
+                finally
+                {
+                    DeleteTempFile(tempWavFile);
+                }
+            });
+        }
+
         public async Task<string> ConvertToNus3Audio(string toneId, string filename, string modPath, uint loopStartSample, uint loopEndSample)
         {
             return await Task.Run(() =>
@@ -160,6 +212,8 @@ namespace Sma5hMusic.GUI.Services
             if (!File.Exists(executable))
                 throw new FileNotFoundException($"Required tool not found: {executable}", executable);
 
+            _logger.LogInformation("Running tool: {Executable} {Arguments}", executable, string.Join(" ", arguments.Select(p => $"\"{p}\"")));
+
             var startInfo = new ProcessStartInfo
             {
                 FileName = executable,
@@ -176,6 +230,9 @@ namespace Sma5hMusic.GUI.Services
             var output = process.StandardOutput.ReadToEnd();
             var error = process.StandardError.ReadToEnd();
             process.WaitForExit();
+
+            _logger.LogInformation("Tool exited: {Executable}. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}",
+                Path.GetFileName(executable), process.ExitCode, output, error);
 
             if (process.ExitCode != 0)
                 throw new InvalidOperationException($"{Path.GetFileName(executable)} failed: {error}{output}");

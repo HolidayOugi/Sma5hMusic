@@ -17,6 +17,7 @@ namespace VGMMusic
         private readonly int _totalSamplesToPlay;           // Total samples to play
         private readonly int _channels;      // Number of channels this VGMSTREAM uses.
         private readonly int _sampleRate;    // Sample rate of this VGMSTREAM.
+        private readonly int _bytesPerSampleFrame;
         private readonly int loopCount = 1; // Number of times to loop. // TODO: Make configurable.
         private readonly int _loopStartSample;
         private readonly int _loopEndSample;
@@ -52,6 +53,7 @@ namespace VGMMusic
             _fileLoaded = true;
             _sampleRate = VGMStreamNative.GetVGMStreamSampleRate(_vgmstream);
             _channels = VGMStreamNative.GetVGMStreamChannelCount(_vgmstream);
+            _bytesPerSampleFrame = _channels * sizeof(short);
             _totalSamplesToPlay = VGMStreamNative.GetVGMStreamPlaySamples(loopCount, 0, 0, _vgmstream);
 
             _loopStartSample = VGMStreamNative.GetVGMStreamLoopStartSample(_vgmstream);
@@ -91,17 +93,38 @@ namespace VGMMusic
             }
         }
 
-        // TODO: Add seeking support.
         public override long Position
         {
-            get;
-            set;
+            get
+            {
+                return _totalPlayed * _bytesPerSampleFrame;
+            }
+            set
+            {
+                var sample = _bytesPerSampleFrame == 0 ? 0 : (int)(value / _bytesPerSampleFrame);
+                SeekToSample(sample);
+            }
         }
 
         public void ResetVGM()
         {
             _totalPlayed = 0;
             VGMStreamNative.ResetVGMStream(_vgmstream);
+        }
+
+        public void SeekToSample(int sample)
+        {
+            if (!_fileLoaded)
+                return;
+
+            if (sample < 0)
+                sample = 0;
+
+            if (sample > _totalSamples)
+                sample = _totalSamples;
+
+            VGMStreamNative.SeekVGMStream(_vgmstream, sample);
+            _totalPlayed = sample;
         }
 
         #region IDisposable Methods
