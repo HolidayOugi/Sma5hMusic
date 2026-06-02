@@ -60,7 +60,7 @@ namespace Sma5h.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.NameId, me => me.MapFrom(p => p.NameId))
                 .ForMember(i => i.DispOrder, me => me.MapFrom(p => p.DispOrder))
                 .ForMember(i => i.DispOrderSound, me => me.MapFrom(p => p.DispOrderSound))
-                .ForMember(i => i.SaveNo, me => me.MapFrom(p => p.SaveNo))
+                .ForMember(i => i.SaveNo, me => me.MapFrom(p => ToSignedByte(p.SaveNo)))
                 .ForMember(i => i.Unk1, me => me.MapFrom(p => p.Unk1))
                 .ForMember(i => i.IsDlc, me => me.MapFrom(p => p.IsDlc))
                 .ForMember(i => i.IsPatch, me => me.MapFrom(p => p.IsPatch))
@@ -252,6 +252,17 @@ namespace Sma5h.Mods.Music.Models.AutoMapper
                .ForMember(i => i.StartPoint2, me => me.MapFrom(p => p.StartPoint2))
                .ForMember(i => i.StartPoint3, me => me.MapFrom(p => p.StartPoint3))
                .ForMember(i => i.StartPoint4, me => me.MapFrom(p => p.StartPoint4));
+        }
+
+        private static sbyte ToSignedByte(short value)
+        {
+            if (value >= byte.MinValue && value <= byte.MaxValue)
+                return unchecked((sbyte)(byte)value);
+
+            if (value < sbyte.MinValue)
+                return sbyte.MinValue;
+
+            return sbyte.MaxValue;
         }
     }
 }
