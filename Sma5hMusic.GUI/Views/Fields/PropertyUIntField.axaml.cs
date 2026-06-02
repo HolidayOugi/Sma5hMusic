@@ -1,4 +1,4 @@
-﻿using Avalonia;
+using Avalonia;
 using Avalonia.Markup.Xaml;
 
 namespace Sma5hMusic.GUI.Views.Fields

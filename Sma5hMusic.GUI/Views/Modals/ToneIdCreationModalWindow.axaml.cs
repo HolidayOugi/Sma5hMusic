@@ -25,6 +25,10 @@ namespace Sma5hMusic.GUI.Views
                 if (ViewModel != null)
                     await ViewModel.ClosePreview();
             };
+            Closed += (sender, e) =>
+            {
+                ViewModel?.CleanupLoopPreviewFiles();
+            };
         }
 
         private void InitializeComponent()

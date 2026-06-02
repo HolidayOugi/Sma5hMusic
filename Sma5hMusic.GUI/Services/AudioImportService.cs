@@ -16,6 +16,7 @@ namespace Sma5hMusic.GUI.Services
     public class AudioImportService : IAudioImportService
     {
         private const uint TargetSampleRate = 48_000;
+        private const uint PreviewContextSamples = TargetSampleRate * 6;
         private static readonly string[] SourceAudioExtensions =
         {
             ".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".aiff", ".aif", ".wma"
@@ -84,9 +85,10 @@ namespace Sma5hMusic.GUI.Services
                 {
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
-                    var preRollSamples = Math.Max(1u, (uint)Math.Round(loopEnd48k * 0.1));
-                    var requestedPreviewStart48k = loopEnd48k > preRollSamples ? loopEnd48k - preRollSamples : 0;
-                    var restartPreviewDuration48k = Math.Max(1u, Math.Min(preRollSamples, loopEnd48k - loopStart48k));
+                    var loopLength48k = loopEnd48k - loopStart48k;
+                    var endingPreviewDuration48k = Math.Max(1u, Math.Min(PreviewContextSamples, loopEnd48k));
+                    var requestedPreviewStart48k = loopEnd48k - endingPreviewDuration48k;
+                    var restartPreviewDuration48k = Math.Max(1u, Math.Min(PreviewContextSamples, loopLength48k));
                     var restartPreviewEnd48k = loopStart48k + restartPreviewDuration48k;
                     uint relativeLoopStart48k;
                     uint relativeLoopEnd48k;
@@ -98,8 +100,8 @@ namespace Sma5hMusic.GUI.Services
                     uint secondSegmentPreviewDuration = 0;
                     var hasSecondSegment = false;
 
-                    _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, RequestedPreviewStart48k={RequestedPreviewStart48k}, RestartPreviewEnd48k={RestartPreviewEnd48k}.",
-                        loopStart48k, loopEnd48k, requestedPreviewStart48k, restartPreviewEnd48k);
+                    _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, RequestedPreviewStart48k={RequestedPreviewStart48k}, EndingPreviewDuration48k={EndingPreviewDuration48k}, RestartPreviewDuration48k={RestartPreviewDuration48k}.",
+                        loopStart48k, loopEnd48k, requestedPreviewStart48k, endingPreviewDuration48k, restartPreviewDuration48k);
 
                     if (requestedPreviewStart48k <= restartPreviewEnd48k)
                     {
@@ -159,6 +161,26 @@ namespace Sma5hMusic.GUI.Services
                     DeleteTempFile(endingWavFile);
                 }
             });
+        }
+
+        public void CleanupLoopPreviews()
+        {
+            try
+            {
+                var tempPath = GetTempPath();
+                if (!Directory.Exists(tempPath))
+                    return;
+
+                foreach (var file in Directory.EnumerateFiles(tempPath, "*.lopus"))
+                {
+                    DeleteTempFile(file);
+                    _logger.LogInformation("Deleted stale loop preview file {LoopPreviewFile}.", file);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Could not cleanup stale loop preview files.");
+            }
         }
 
         public async Task<string> ConvertToNus3Audio(string toneId, string filename, string modPath, uint loopStartSample, uint loopEndSample)

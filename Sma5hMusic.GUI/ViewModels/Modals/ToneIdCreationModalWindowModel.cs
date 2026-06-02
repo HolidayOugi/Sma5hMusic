@@ -72,7 +72,31 @@ namespace Sma5hMusic.GUI.ViewModels
         public uint LoopEndMs { get; set; }
 
         [Reactive]
+        public uint LoopStartMinutes { get; set; }
+
+        [Reactive]
+        public uint LoopStartSeconds { get; set; }
+
+        [Reactive]
+        public uint LoopStartMilliseconds { get; set; }
+
+        [Reactive]
+        public uint LoopEndMinutes { get; set; }
+
+        [Reactive]
+        public uint LoopEndSeconds { get; set; }
+
+        [Reactive]
+        public uint LoopEndMilliseconds { get; set; }
+
+        [Reactive]
         public double WindowHeight { get; set; }
+
+        [Reactive]
+        public double WindowWidth { get; set; }
+
+        [Reactive]
+        public double WindowMinWidth { get; set; }
 
         [Reactive]
         public bool IsPreviewProgressVisible { get; set; }
@@ -95,6 +119,8 @@ namespace Sma5hMusic.GUI.ViewModels
             _messageDialog = messageDialog;
             _musicPlayer = musicPlayer;
             WindowHeight = 400;
+            WindowWidth = 520;
+            WindowMinWidth = 500;
             PreviewProgressText = string.Empty;
 
             //Bind observables
@@ -125,11 +151,13 @@ namespace Sma5hMusic.GUI.ViewModels
                 "Loop end sample must be greater than 0.");
 
             this.ValidationRule(p => p.LoopStartSample,
-                p => !IsAudioImport || p <= LoopEndSample,
+                this.WhenAnyValue(p => p.IsAudioImport, p => p.LoopStartSample, p => p.LoopEndSample,
+                    (isAudioImport, loopStartSample, loopEndSample) => !isAudioImport || loopStartSample <= loopEndSample),
                 "Loop start sample must be lower than or equal to loop end sample.");
 
             this.ValidationRule(p => p.LoopEndSample,
-                p => !IsAudioImport || LoopStartSample <= p,
+                this.WhenAnyValue(p => p.IsAudioImport, p => p.LoopStartSample, p => p.LoopEndSample,
+                    (isAudioImport, loopStartSample, loopEndSample) => !isAudioImport || loopStartSample <= loopEndSample),
                 "Loop end sample must be greater than or equal to loop start sample.");
 
             this.ValidationRule(p => p.LoopEndSample,
@@ -141,11 +169,13 @@ namespace Sma5hMusic.GUI.ViewModels
                 "Loop end ms must be greater than 0.");
 
             this.ValidationRule(p => p.LoopStartMs,
-                p => !IsAudioImport || p <= LoopEndMs,
+                this.WhenAnyValue(p => p.IsAudioImport, p => p.LoopStartMs, p => p.LoopEndMs,
+                    (isAudioImport, loopStartMs, loopEndMs) => !isAudioImport || loopStartMs <= loopEndMs),
                 "Loop start ms must be lower than or equal to loop end ms.");
 
             this.ValidationRule(p => p.LoopEndMs,
-                p => !IsAudioImport || LoopStartMs <= p,
+                this.WhenAnyValue(p => p.IsAudioImport, p => p.LoopStartMs, p => p.LoopEndMs,
+                    (isAudioImport, loopStartMs, loopEndMs) => !isAudioImport || loopStartMs <= loopEndMs),
                 "Loop end ms must be greater than or equal to loop start ms.");
 
             this.ValidationRule(p => p.LoopEndMs,
@@ -170,6 +200,12 @@ namespace Sma5hMusic.GUI.ViewModels
 
             this.WhenAnyValue(p => p.LoopEndMs)
                 .Subscribe(p => UpdateLoopEndSampleFromMs(p));
+
+            this.WhenAnyValue(p => p.LoopStartMinutes, p => p.LoopStartSeconds, p => p.LoopStartMilliseconds)
+                .Subscribe(_ => UpdateLoopStartFromTimeParts());
+
+            this.WhenAnyValue(p => p.LoopEndMinutes, p => p.LoopEndSeconds, p => p.LoopEndMilliseconds)
+                .Subscribe(_ => UpdateLoopEndFromTimeParts());
         }
 
         public void LoadToneId(string toneId)
@@ -180,7 +216,9 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadAudioImportInfo(uint sampleRate, uint totalSamples)
         {
             IsAudioImport = true;
-            WindowHeight = 560;
+            WindowHeight = 760;
+            WindowWidth = 1080;
+            WindowMinWidth = 1000;
             SampleRate = sampleRate;
             TotalSamples = totalSamples;
             TotalTimeMs = SamplesToMs(totalSamples);
@@ -192,6 +230,8 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             IsAudioImport = false;
             WindowHeight = 400;
+            WindowWidth = 520;
+            WindowMinWidth = 500;
             SampleRate = 0;
             TotalSamples = 0;
             TotalTimeMs = 0;
@@ -199,6 +239,8 @@ namespace Sma5hMusic.GUI.ViewModels
             LoopEndSample = 0;
             LoopStartMs = 0;
             LoopEndMs = 0;
+            SetLoopStartTimeParts(0);
+            SetLoopEndTimeParts(0);
         }
 
         private async void Cancel(Window w)
@@ -234,6 +276,12 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             _loopPreviewVersion++;
             await StopPreview();
+            CleanupLoopPreviewFiles();
+        }
+
+        public void CleanupLoopPreviewFiles()
+        {
+            _audioImportService.CleanupLoopPreviews();
         }
 
         private async Task PreviewLoop()
@@ -395,7 +443,12 @@ namespace Sma5hMusic.GUI.ViewModels
             if (_isUpdatingLoopFields)
                 return;
 
-            UpdateLoopFields(() => LoopStartMs = SamplesToMs(sample));
+            UpdateLoopFields(() =>
+            {
+                var milliseconds = SamplesToMs(sample);
+                LoopStartMs = milliseconds;
+                SetLoopStartTimeParts(milliseconds);
+            });
         }
 
         private void UpdateLoopEndMsFromSample(uint sample)
@@ -403,7 +456,12 @@ namespace Sma5hMusic.GUI.ViewModels
             if (_isUpdatingLoopFields)
                 return;
 
-            UpdateLoopFields(() => LoopEndMs = SamplesToMs(sample));
+            UpdateLoopFields(() =>
+            {
+                var milliseconds = SamplesToMs(sample);
+                LoopEndMs = milliseconds;
+                SetLoopEndTimeParts(milliseconds);
+            });
         }
 
         private void UpdateLoopStartSampleFromMs(uint milliseconds)
@@ -411,7 +469,11 @@ namespace Sma5hMusic.GUI.ViewModels
             if (_isUpdatingLoopFields)
                 return;
 
-            UpdateLoopFields(() => LoopStartSample = MsToSamples(milliseconds));
+            UpdateLoopFields(() =>
+            {
+                LoopStartSample = MsToSamples(milliseconds);
+                SetLoopStartTimeParts(milliseconds);
+            });
         }
 
         private void UpdateLoopEndSampleFromMs(uint milliseconds)
@@ -419,7 +481,53 @@ namespace Sma5hMusic.GUI.ViewModels
             if (_isUpdatingLoopFields)
                 return;
 
-            UpdateLoopFields(() => LoopEndSample = MsToSamples(milliseconds));
+            UpdateLoopFields(() =>
+            {
+                LoopEndSample = MsToSamples(milliseconds);
+                SetLoopEndTimeParts(milliseconds);
+            });
+        }
+
+        private void UpdateLoopStartFromTimeParts()
+        {
+            if (_isUpdatingLoopFields)
+                return;
+
+            UpdateLoopFields(() =>
+            {
+                var milliseconds = ComposeMilliseconds(LoopStartMinutes, LoopStartSeconds, LoopStartMilliseconds);
+                LoopStartMs = milliseconds;
+                LoopStartSample = MsToSamples(milliseconds);
+            });
+        }
+
+        private void UpdateLoopEndFromTimeParts()
+        {
+            if (_isUpdatingLoopFields)
+                return;
+
+            UpdateLoopFields(() =>
+            {
+                var milliseconds = ComposeMilliseconds(LoopEndMinutes, LoopEndSeconds, LoopEndMilliseconds);
+                LoopEndMs = milliseconds;
+                LoopEndSample = MsToSamples(milliseconds);
+            });
+        }
+
+        private void SetLoopStartTimeParts(uint milliseconds)
+        {
+            SplitMilliseconds(milliseconds, out var minutes, out var seconds, out var remainingMilliseconds);
+            LoopStartMinutes = minutes;
+            LoopStartSeconds = seconds;
+            LoopStartMilliseconds = remainingMilliseconds;
+        }
+
+        private void SetLoopEndTimeParts(uint milliseconds)
+        {
+            SplitMilliseconds(milliseconds, out var minutes, out var seconds, out var remainingMilliseconds);
+            LoopEndMinutes = minutes;
+            LoopEndSeconds = seconds;
+            LoopEndMilliseconds = remainingMilliseconds;
         }
 
         private void UpdateLoopFields(Action update)
@@ -436,7 +544,30 @@ namespace Sma5hMusic.GUI.ViewModels
 
         private uint MsToSamples(uint milliseconds)
         {
-            return SampleRate == 0 ? 0 : (uint)Math.Round(milliseconds * SampleRate / 1000.0);
+            if (SampleRate == 0)
+                return 0;
+
+            var samples = Math.Round(milliseconds * (double)SampleRate / 1000.0);
+            if (samples <= 0)
+                return 0;
+
+            var maxSamples = TotalSamples > 0 ? TotalSamples : uint.MaxValue;
+            return samples >= maxSamples ? maxSamples : (uint)samples;
         }
+
+        private static uint ComposeMilliseconds(uint minutes, uint seconds, uint milliseconds)
+        {
+            var total = minutes * 60000.0 + seconds * 1000.0 + milliseconds;
+            return total >= uint.MaxValue ? uint.MaxValue : (uint)Math.Round(total);
+        }
+
+        private static void SplitMilliseconds(uint milliseconds, out uint minutes, out uint seconds, out uint remainingMilliseconds)
+        {
+            minutes = milliseconds / 60000;
+            var remainder = milliseconds % 60000;
+            seconds = remainder / 1000;
+            remainingMilliseconds = remainder % 1000;
+        }
+
     }
 }

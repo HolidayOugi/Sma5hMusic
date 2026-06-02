@@ -6,7 +6,7 @@
              x:Class="Sma5hMusic.GUI.Views.ContextMenuView">
   <DockPanel>
     <Menu DockPanel.Dock="Left">
-      <MenuItem Header="Import Songs to..." Items="{Binding Mods}" IsEnabled="True">
+      <MenuItem Header="Import Songs from File to..." Items="{Binding Mods}" IsEnabled="True">
         <MenuItem.Styles>
           <Style Selector="MenuItem > MenuItem">
             <Setter Property="Header" Value="{Binding Name}"/>

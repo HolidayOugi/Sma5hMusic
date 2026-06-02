@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="720" Height="{Binding WindowHeight} + 100" MinWidth="640" MinHeight="{Binding WindowHeight} + 100"
+        Width="{Binding WindowWidth}" Height="{Binding WindowHeight}" MinWidth="{Binding WindowMinWidth}" MinHeight="{Binding WindowHeight}"
         x:Class="Sma5hMusic.GUI.Views.ToneIdCreationModalWindow"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
@@ -21,16 +21,26 @@
       <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
       <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
       <StackPanel IsVisible="{Binding IsAudioImport}">
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
           <fields:PropertyUIntField Grid.Row="0" Grid.Column="0" Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
           <fields:PropertyUIntField Grid.Row="1" Grid.Column="0" Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
           <fields:PropertyUIntField Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
-          <fields:PropertyUIntField Grid.Row="2" Grid.Column="0" x:Name="LoopStartSample" Label="Loop start sample" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in samples." />
-          <fields:PropertyUIntField Grid.Row="2" Grid.Column="1" Margin="8,0,0,0" x:Name="LoopStartMs" Label="Loop start ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in milliseconds." />
         </Grid>
-        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
-          <fields:PropertyUIntField Grid.Column="0" x:Name="LoopEndSample" Label="Loop end sample" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in samples." />
-          <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopEndMs" Label="Loop end ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in milliseconds." />
+        <TextBlock Margin="6,8,0,0" Text="Loop start" />
+        <Grid ColumnDefinitions="2*,2*,*,*,*" RowDefinitions="Auto">
+          <fields:PropertyUIntField Grid.Column="0" x:Name="LoopStartSample" Label="Samples" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in samples." />
+          <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopStartMs" Label="Total ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in total milliseconds." />
+          <fields:PropertyUIntField Grid.Column="2" Margin="8,0,0,0" Label="Min" Value="{Binding LoopStartMinutes, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop start minutes." />
+          <fields:PropertyUIntField Grid.Column="3" Margin="8,0,0,0" Label="Sec" Value="{Binding LoopStartSeconds, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop start seconds." />
+          <fields:PropertyUIntField Grid.Column="4" Margin="8,0,0,0" Label="Ms" Value="{Binding LoopStartMilliseconds, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop start milliseconds." />
+        </Grid>
+        <TextBlock Margin="6,8,0,0" Text="Loop end" />
+        <Grid ColumnDefinitions="2*,2*,*,*,*" RowDefinitions="Auto">
+          <fields:PropertyUIntField Grid.Column="0" x:Name="LoopEndSample" Label="Samples" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in samples." />
+          <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopEndMs" Label="Total ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in total milliseconds." />
+          <fields:PropertyUIntField Grid.Column="2" Margin="8,0,0,0" Label="Min" Value="{Binding LoopEndMinutes, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop end minutes." />
+          <fields:PropertyUIntField Grid.Column="3" Margin="8,0,0,0" Label="Sec" Value="{Binding LoopEndSeconds, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop end seconds." />
+          <fields:PropertyUIntField Grid.Column="4" Margin="8,0,0,0" Label="Ms" Value="{Binding LoopEndMilliseconds, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop end milliseconds." />
         </Grid>
         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
           <Button Content="Preview loop" Command="{Binding ActionPreviewLoop}" />
