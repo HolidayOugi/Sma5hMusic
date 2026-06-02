@@ -4,6 +4,8 @@ using Sma5h.Mods.Music;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Models;
 using System;
+using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -57,6 +59,32 @@ namespace Sma5hMusic.GUI.Services
             });
         }
 
+        public async Task<IReadOnlyList<AutoLoopPoint>> CalculateAutoLoopPoints(string filename, uint sampleRate, uint totalSamples)
+        {
+            return await Task.Run(() =>
+            {
+                _logger.LogInformation("Automatic loop point calculation requested. File={Filename}, SampleRate={SampleRate}, TotalSamples={TotalSamples}.",
+                    filename, sampleRate, totalSamples);
+
+                var output = RunPymusiclooper("export-points", "--path", filename, "--fmt", "SAMPLES", "--alt-export-top", "-1");
+                var loopPoints = ParsePymusiclooperOutput(output, sampleRate, totalSamples)
+                    .ToList();
+
+                _logger.LogInformation("Automatic loop point calculation completed. File={Filename}, ParsedCandidates={CandidateCount}.",
+                    filename, loopPoints.Count);
+
+                foreach (var loopPoint in loopPoints)
+                {
+                    _logger.LogInformation("Automatic loop candidate #{Rank}: Start={LoopStartSample}, End={LoopEndSample}, Score={Score}, NoteDifference={NoteDifference}, LoudnessDifference={LoudnessDifference}, StartTime={StartMinutes}:{StartSeconds}.{StartMilliseconds}, EndTime={EndMinutes}:{EndSeconds}.{EndMilliseconds}.",
+                        loopPoint.Rank, loopPoint.LoopStartSample, loopPoint.LoopEndSample, loopPoint.Score, loopPoint.NoteDifference, loopPoint.LoudnessDifference,
+                        loopPoint.LoopStartMinutes, loopPoint.LoopStartSeconds, loopPoint.LoopStartMilliseconds,
+                        loopPoint.LoopEndMinutes, loopPoint.LoopEndSeconds, loopPoint.LoopEndMilliseconds);
+                }
+
+                return loopPoints;
+            });
+        }
+
         public async Task<LoopPreviewInfo> CreateLoopPreview(string filename, uint loopStartSample, uint loopEndSample, uint totalSamples)
         {
             return await Task.Run(() =>
@@ -76,10 +104,11 @@ namespace Sma5hMusic.GUI.Services
                 Directory.CreateDirectory(GetTempPath());
 
                 var tempId = Guid.NewGuid().ToString("N");
-                var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
+                var sourceWavFile = Path.Combine(GetTempPath(), $"{tempId}_source48k.wav");
+                var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}_preview.wav");
                 var restartWavFile = Path.Combine(GetTempPath(), $"{tempId}_restart.wav");
                 var endingWavFile = Path.Combine(GetTempPath(), $"{tempId}_ending.wav");
-                var previewFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
+                var previewFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
 
                 try
                 {
@@ -89,73 +118,37 @@ namespace Sma5hMusic.GUI.Services
                     var endingPreviewDuration48k = Math.Max(1u, Math.Min(PreviewContextSamples, loopEnd48k));
                     var requestedPreviewStart48k = loopEnd48k - endingPreviewDuration48k;
                     var restartPreviewDuration48k = Math.Max(1u, Math.Min(PreviewContextSamples, loopLength48k));
-                    var restartPreviewEnd48k = loopStart48k + restartPreviewDuration48k;
-                    uint relativeLoopStart48k;
-                    uint relativeLoopEnd48k;
-                    uint previewStartSample;
-                    uint firstSegmentSourceStart;
-                    uint firstSegmentPreviewLength;
-                    uint secondSegmentSourceStart = 0;
-                    uint secondSegmentPreviewStart = 0;
-                    uint secondSegmentPreviewDuration = 0;
-                    var hasSecondSegment = false;
 
                     _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, RequestedPreviewStart48k={RequestedPreviewStart48k}, EndingPreviewDuration48k={EndingPreviewDuration48k}, RestartPreviewDuration48k={RestartPreviewDuration48k}.",
                         loopStart48k, loopEnd48k, requestedPreviewStart48k, endingPreviewDuration48k, restartPreviewDuration48k);
 
-                    if (requestedPreviewStart48k <= restartPreviewEnd48k)
-                    {
-                        var clipStart48k = Math.Min(requestedPreviewStart48k, loopStart48k);
-                        ExtractWavSegment(filename, tempWavFile, clipStart48k, loopEnd48k - clipStart48k, info.SampleRate);
-                        relativeLoopStart48k = loopStart48k - clipStart48k;
-                        relativeLoopEnd48k = loopEnd48k - clipStart48k;
-                        previewStartSample = requestedPreviewStart48k - clipStart48k;
-                        firstSegmentSourceStart = ConvertSampleRate(clipStart48k, TargetSampleRate, info.SampleRate);
-                        firstSegmentPreviewLength = relativeLoopEnd48k;
-                    }
-                    else
-                    {
-                        ExtractWavSegment(filename, restartWavFile, loopStart48k, restartPreviewDuration48k, info.SampleRate);
-                        ExtractWavSegment(filename, endingWavFile, requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, info.SampleRate);
-                        RunTool(GetSoxExe(), restartWavFile, endingWavFile, tempWavFile);
-                        relativeLoopStart48k = 0;
-                        relativeLoopEnd48k = restartPreviewDuration48k + (loopEnd48k - requestedPreviewStart48k);
-                        previewStartSample = restartPreviewDuration48k;
-                        firstSegmentSourceStart = loopStartSample;
-                        firstSegmentPreviewLength = restartPreviewDuration48k;
-                        secondSegmentSourceStart = ConvertSampleRate(requestedPreviewStart48k, TargetSampleRate, info.SampleRate);
-                        secondSegmentPreviewStart = restartPreviewDuration48k;
-                        secondSegmentPreviewDuration = loopEnd48k - requestedPreviewStart48k;
-                        hasSecondSegment = true;
-                    }
+                    _logger.LogInformation("Creating full 48kHz WAV for loop preview before trimming. Input={InputFile}, Output={SourceWavFile}.",
+                        filename, sourceWavFile);
+                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), sourceWavFile);
 
-                    _logger.LogInformation("Loop preview relative samples: RelativeLoopStart48k={RelativeLoopStart48k}, RelativeLoopEnd48k={RelativeLoopEnd48k}, PreviewStartSample={PreviewStartSample}.",
-                        relativeLoopStart48k, relativeLoopEnd48k, previewStartSample);
+                    ExtractWavSegment(sourceWavFile, endingWavFile, requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, TargetSampleRate);
+                    ExtractWavSegment(sourceWavFile, restartWavFile, loopStart48k, restartPreviewDuration48k, TargetSampleRate);
+                    RunTool(GetSoxExe(), "--combine", "concatenate", endingWavFile, restartWavFile, tempWavFile);
+                    File.Move(tempWavFile, previewFile);
 
-                    _logger.LogInformation("Loop preview temp WAV created: {TempWavFile}. Exists={Exists}, Length={Length}.",
-                        tempWavFile, File.Exists(tempWavFile), File.Exists(tempWavFile) ? new FileInfo(tempWavFile).Length : 0);
+                    _logger.LogInformation("Loop preview WAV created in playback order. EndingSegmentStart48k={EndingStart48k}, EndingDuration48k={EndingDuration48k}, RestartSegmentStart48k={RestartStart48k}, RestartDuration48k={RestartDuration48k}.",
+                        requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, loopStart48k, restartPreviewDuration48k);
 
-                    RunTool(GetVGAudioCliExe(), tempWavFile, previewFile, "-l", $"{relativeLoopStart48k}-{relativeLoopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
-                    _logger.LogInformation("Loop preview LOPUS created: {PreviewFile}. Exists={Exists}, Length={Length}.",
+                    _logger.LogInformation("Loop preview WAV ready: {PreviewFile}. Exists={Exists}, Length={Length}.",
                         previewFile, File.Exists(previewFile), File.Exists(previewFile) ? new FileInfo(previewFile).Length : 0);
 
                     return new LoopPreviewInfo
                     {
                         Filename = previewFile,
-                        StartSample = checked((int)previewStartSample),
-                        PreviewLoopStartSample = relativeLoopStart48k,
-                        PreviewLoopEndSample = relativeLoopEnd48k,
-                        FirstSegmentSourceStartSample = firstSegmentSourceStart,
-                        FirstSegmentPreviewStartSample = 0,
-                        FirstSegmentPreviewLengthSamples = firstSegmentPreviewLength,
-                        SecondSegmentSourceStartSample = secondSegmentSourceStart,
-                        SecondSegmentPreviewStartSample = secondSegmentPreviewStart,
-                        SecondSegmentPreviewDurationSamples = secondSegmentPreviewDuration,
-                        HasSecondSegment = hasSecondSegment
+                        PreviewLengthSamples = endingPreviewDuration48k + restartPreviewDuration48k,
+                        FirstSegmentSourceStartSample = ConvertSampleRate(requestedPreviewStart48k, TargetSampleRate, info.SampleRate),
+                        SecondSegmentSourceStartSample = loopStartSample,
+                        SecondSegmentPreviewStartSample = endingPreviewDuration48k
                     };
                 }
                 finally
                 {
+                    DeleteTempFile(sourceWavFile);
                     DeleteTempFile(tempWavFile);
                     DeleteTempFile(restartWavFile);
                     DeleteTempFile(endingWavFile);
@@ -171,7 +164,8 @@ namespace Sma5hMusic.GUI.Services
                 if (!Directory.Exists(tempPath))
                     return;
 
-                foreach (var file in Directory.EnumerateFiles(tempPath, "*.lopus"))
+                foreach (var file in Directory.EnumerateFiles(tempPath, "*.lopus")
+                    .Concat(Directory.EnumerateFiles(tempPath, "*.wav")))
                 {
                     DeleteTempFile(file);
                     _logger.LogInformation("Deleted stale loop preview file {LoopPreviewFile}.", file);
@@ -287,6 +281,19 @@ namespace Sma5hMusic.GUI.Services
             return (uint)Math.Round(sample * (targetSampleRate / (double)sourceSampleRate));
         }
 
+        private static uint SamplesToMs(uint sample, uint sampleRate)
+        {
+            return sampleRate == 0 ? 0 : (uint)Math.Round(sample * 1000.0 / sampleRate);
+        }
+
+        private static void SplitMilliseconds(uint milliseconds, out uint minutes, out uint seconds, out uint remainingMilliseconds)
+        {
+            minutes = milliseconds / 60000;
+            var remainder = milliseconds % 60000;
+            seconds = remainder / 1000;
+            remainingMilliseconds = remainder % 1000;
+        }
+
         private string RunTool(string executable, params string[] arguments)
         {
             if (!File.Exists(executable))
@@ -318,6 +325,158 @@ namespace Sma5hMusic.GUI.Services
                 throw new InvalidOperationException($"{Path.GetFileName(executable)} failed: {error}{output}");
 
             return output;
+        }
+
+        private string RunPymusiclooper(params string[] arguments)
+        {
+            try
+            {
+                return RunCommand("pymusiclooper", arguments);
+            }
+            catch (Win32Exception e)
+            {
+                _logger.LogWarning(e, "Could not launch pymusiclooper directly. Trying pymusiclooper.exe.");
+            }
+
+            try
+            {
+                return RunCommand("pymusiclooper.exe", arguments);
+            }
+            catch (Win32Exception e)
+            {
+                _logger.LogWarning(e, "Could not launch pymusiclooper.exe. Trying python -m pymusiclooper.");
+            }
+
+            try
+            {
+                return RunCommand("python", new[] { "-m", "pymusiclooper" }.Concat(arguments).ToArray());
+            }
+            catch (Win32Exception e)
+            {
+                _logger.LogError(e, "pymusiclooper could not be launched. Make sure pymusiclooper is installed and available in PATH.");
+                throw new FileNotFoundException("pymusiclooper was not found. Please install pymusiclooper and make sure it is available in PATH.", "pymusiclooper", e);
+            }
+        }
+
+        private string RunCommand(string executable, params string[] arguments)
+        {
+            _logger.LogInformation("Running command: {Executable} {Arguments}", executable, string.Join(" ", arguments.Select(p => $"\"{p}\"")));
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = executable,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            foreach (var argument in arguments)
+                startInfo.ArgumentList.Add(argument);
+
+            using var process = Process.Start(startInfo);
+            var output = process.StandardOutput.ReadToEnd();
+            var error = process.StandardError.ReadToEnd();
+            process.WaitForExit();
+
+            _logger.LogInformation("Command exited: {Executable}. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}",
+                executable, process.ExitCode, output, error);
+
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException($"{executable} failed: {error}{output}");
+
+            return string.Join(Environment.NewLine, new[] { output, error }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+
+        private IReadOnlyList<AutoLoopPoint> ParsePymusiclooperOutput(string output, uint sampleRate, uint totalSamples)
+        {
+            _logger.LogInformation("Parsing pymusiclooper output. RawOutput={RawOutput}", output);
+
+            var candidates = new List<AutoLoopPoint>();
+            var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var line in lines)
+            {
+                var trimmedLine = line.Trim();
+                _logger.LogDebug("Parsing pymusiclooper output line: {Line}", trimmedLine);
+
+                var values = Regex.Matches(trimmedLine, @"[-+]?\d+(?:[.,]\d+)?")
+                    .Cast<Match>()
+                    .Select(p => p.Value.Replace(',', '.'))
+                    .ToList();
+
+                if (values.Count < 2)
+                {
+                    _logger.LogDebug("Skipping pymusiclooper line because it has fewer than two numeric values: {Line}", trimmedLine);
+                    continue;
+                }
+
+                if (!uint.TryParse(values[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var loopStartSample) ||
+                    !uint.TryParse(values[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var loopEndSample))
+                {
+                    _logger.LogDebug("Skipping pymusiclooper line because start/end samples could not be parsed: {Line}", trimmedLine);
+                    continue;
+                }
+
+                if (loopEndSample == 0 || loopStartSample > loopEndSample || loopEndSample > totalSamples)
+                {
+                    _logger.LogDebug("Skipping pymusiclooper line because samples are outside the valid range. Line={Line}, Start={Start}, End={End}, TotalSamples={TotalSamples}",
+                        trimmedLine, loopStartSample, loopEndSample, totalSamples);
+                    continue;
+                }
+
+                var noteDifference = TryParseDouble(values, 2);
+                var loudnessDifference = TryParseDouble(values, 3);
+                var score = TryParseDouble(values, 4);
+                var scorePercentage = score <= 1 ? score * 100 : score;
+                SplitMilliseconds(SamplesToMs(loopStartSample, sampleRate), out var startMinutes, out var startSeconds, out var startMilliseconds);
+                SplitMilliseconds(SamplesToMs(loopEndSample, sampleRate), out var endMinutes, out var endSeconds, out var endMilliseconds);
+
+                candidates.Add(new AutoLoopPoint
+                {
+                    LoopStartSample = loopStartSample,
+                    LoopEndSample = loopEndSample,
+                    NoteDifference = noteDifference,
+                    LoudnessDifference = loudnessDifference,
+                    Score = scorePercentage,
+                    ScoreText = $"{scorePercentage:0.##}%",
+                    LoopStartTimeText = FormatTime(startMinutes, startSeconds, startMilliseconds),
+                    LoopEndTimeText = FormatTime(endMinutes, endSeconds, endMilliseconds),
+                    LoopStartMinutes = startMinutes,
+                    LoopStartSeconds = startSeconds,
+                    LoopStartMilliseconds = startMilliseconds,
+                    LoopEndMinutes = endMinutes,
+                    LoopEndSeconds = endSeconds,
+                    LoopEndMilliseconds = endMilliseconds
+                });
+            }
+
+            var rankedCandidates = candidates
+                .GroupBy(p => new { p.LoopStartSample, p.LoopEndSample })
+                .Select(p => p.First())
+                .OrderByDescending(p => p.Score)
+                .ThenBy(p => p.LoopStartSample)
+                .ToList();
+
+            for (var i = 0; i < rankedCandidates.Count; i++)
+            {
+                rankedCandidates[i].Rank = i + 1;
+                rankedCandidates[i].RankText = rankedCandidates[i].Rank.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return rankedCandidates;
+        }
+
+        private static double TryParseDouble(IReadOnlyList<string> values, int index)
+        {
+            return values.Count > index && double.TryParse(values[index], NumberStyles.Float, CultureInfo.InvariantCulture, out var result)
+                ? result
+                : 0;
+        }
+
+        private static string FormatTime(uint minutes, uint seconds, uint milliseconds)
+        {
+            return $"{minutes}:{seconds:00}.{milliseconds:000}";
         }
 
         private void ExtractWavSegment(string inputFile, string outputFile, uint startSample48k, uint durationSamples48k, uint sourceSampleRate)

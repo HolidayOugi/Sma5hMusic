@@ -12,22 +12,29 @@
     <Border Classes="headerTitle" DockPanel.Dock="Top">
       <TextBlock>Choose a Tone ID</TextBlock>
     </Border>
-    <StackPanel Classes="modalActions" DockPanel.Dock="Bottom">
-      <Button Content="Choose" Command="{Binding ActionCreate}" CommandParameter="{Binding $parent[Window]}"></Button>
-      <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
-    </StackPanel>
+    <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#404040" Padding="0,8,0,8">
+      <StackPanel Classes="modalActions" Orientation="Horizontal" HorizontalAlignment="Center">
+        <Button Content="Choose" Command="{Binding ActionCreate}" CommandParameter="{Binding $parent[Window]}"></Button>
+        <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
+      </StackPanel>
+    </Border>
 
-    <StackPanel Classes="content">
-      <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
-      <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
-      <StackPanel IsVisible="{Binding IsAudioImport}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+      <StackPanel x:Name="ModalContent" Classes="content" MaxWidth="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
+        <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
+        <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
+        <StackPanel IsVisible="{Binding IsAudioImport}">
         <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
           <fields:PropertyUIntField Grid.Row="0" Grid.Column="0" Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
           <fields:PropertyUIntField Grid.Row="1" Grid.Column="0" Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
           <fields:PropertyUIntField Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
         </Grid>
+        <StackPanel IsVisible="{Binding IsPreviewProgressVisible}" Margin="0,10,0,0">
+          <ProgressBar Minimum="0" Maximum="{Binding PreviewProgressMaximum}" Value="{Binding PreviewProgressValue}" Height="16" />
+          <TextBlock Text="{Binding PreviewProgressText}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+        </StackPanel>
         <TextBlock Margin="6,8,0,0" Text="Loop start" />
-        <Grid ColumnDefinitions="2*,2*,*,*,*" RowDefinitions="Auto">
+        <Grid ColumnDefinitions="1.35*,1.2*,*,*,*" RowDefinitions="Auto">
           <fields:PropertyUIntField Grid.Column="0" x:Name="LoopStartSample" Label="Samples" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in samples." />
           <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopStartMs" Label="Total ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in total milliseconds." />
           <fields:PropertyUIntField Grid.Column="2" Margin="8,0,0,0" Label="Min" Value="{Binding LoopStartMinutes, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop start minutes." />
@@ -35,7 +42,7 @@
           <fields:PropertyUIntField Grid.Column="4" Margin="8,0,0,0" Label="Ms" Value="{Binding LoopStartMilliseconds, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop start milliseconds." />
         </Grid>
         <TextBlock Margin="6,8,0,0" Text="Loop end" />
-        <Grid ColumnDefinitions="2*,2*,*,*,*" RowDefinitions="Auto">
+        <Grid ColumnDefinitions="1.35*,1.2*,*,*,*" RowDefinitions="Auto">
           <fields:PropertyUIntField Grid.Column="0" x:Name="LoopEndSample" Label="Samples" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in samples." />
           <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopEndMs" Label="Total ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in total milliseconds." />
           <fields:PropertyUIntField Grid.Column="2" Margin="8,0,0,0" Label="Min" Value="{Binding LoopEndMinutes, Mode=TwoWay}" HorizontalContentAlignment="Center" ToolTip="Loop end minutes." />
@@ -46,11 +53,73 @@
           <Button Content="Preview loop" Command="{Binding ActionPreviewLoop}" />
           <Button Content="Stop preview" Command="{Binding ActionStopPreview}" />
         </StackPanel>
-        <StackPanel IsVisible="{Binding IsPreviewProgressVisible}" Margin="0,10,0,0">
-          <ProgressBar Minimum="0" Maximum="{Binding PreviewProgressMaximum}" Value="{Binding PreviewProgressValue}" Height="16" />
-          <TextBlock Text="{Binding PreviewProgressText}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+        <StackPanel Margin="0,12,0,0">
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+            <Button Content="Calculate loop points automatically" Command="{Binding ActionCalculateAutoLoops}" />
+          </StackPanel>
+          <TextBlock Text="{Binding AutoLoopStatus}" HorizontalAlignment="Center" Margin="0,4,0,0" />
+          <DataGrid IsVisible="{Binding IsAutoLoopCandidatesVisible}" Items="{Binding AutoLoopPoints}" SelectedItem="{Binding SelectedAutoLoop, Mode=TwoWay}" Height="230" Width="{Binding Bounds.Width, ElementName=ModalContent}" MaxWidth="{Binding Bounds.Width, ElementName=ModalContent}" HorizontalAlignment="Center" Margin="0,8,0,0" IsReadOnly="True">
+            <DataGrid.Styles>
+              <Style Selector="DataGridColumnHeader">
+                <Setter Property="HorizontalContentAlignment" Value="Center" />
+              </Style>
+            </DataGrid.Styles>
+            <DataGrid.Columns>
+              <DataGridTemplateColumn Header="#" Width="56">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding RankText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Start samples" Width="1.05*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LoopStartSample, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="End samples" Width="1.05*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LoopEndSample, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Start" Width="1.35*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LoopStartTimeText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="End" Width="1.35*">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding LoopEndTimeText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="%" Width="70">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <TextBlock Text="{Binding ScoreText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+              <DataGridTemplateColumn Header="Preview" Width="90">
+                <DataGridTemplateColumn.CellTemplate>
+                  <DataTemplate>
+                    <Button Content="Preview" HorizontalAlignment="Center" Command="{Binding $parent[DataGrid].DataContext.ActionPreviewAutoLoop, Mode=OneWay}" CommandParameter="{Binding}" />
+                  </DataTemplate>
+                </DataGridTemplateColumn.CellTemplate>
+              </DataGridTemplateColumn>
+            </DataGrid.Columns>
+          </DataGrid>
+          <Button IsVisible="{Binding HasMoreAutoLoops}" Content="Load more" Command="{Binding ActionLoadMoreAutoLoops}" HorizontalAlignment="Center" Margin="0,8,0,0" />
+        </StackPanel>
         </StackPanel>
       </StackPanel>
-    </StackPanel>
+    </ScrollViewer>
   </DockPanel>
 </Window>
