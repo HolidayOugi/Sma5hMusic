@@ -33,6 +33,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IVGMMusicPlayer _musicPlayer;
         private readonly IMessageDialog _messageDialog;
         private readonly IFileDialog _fileDialog;
+        private readonly IAudioImportService _audioImportService;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
         private readonly ICskPackBuildService _cskPackBuildService;
@@ -96,12 +97,13 @@ namespace Sma5hMusic.GUI.ViewModels
 
 
         public MainWindowViewModel(IServiceProvider serviceProvider, IViewModelManager viewModelManager, IGUIStateManager guiStateManager, IMapper mapper, IVGMMusicPlayer musicPlayer,
-            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
+            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
         {
             _viewModelManager = viewModelManager;
             _guiStateManager = guiStateManager;
             _musicPlayer = musicPlayer;
             _fileDialog = fileDialog;
+            _audioImportService = audioImportService;
             _buildDialog = buildDialog;
             _cskPackBuildService = cskPackBuildService;
             _messageDialog = messageDialog;
@@ -494,13 +496,54 @@ namespace Sma5hMusic.GUI.ViewModels
             {
                 _vmToneIdCreation.Filename = inputFile;
                 _vmToneIdCreation.LoadToneId(Path.GetFileNameWithoutExtension(inputFile));
+
+                var requiresConversion = _audioImportService.RequiresConversion(inputFile);
+                if (requiresConversion)
+                {
+                    try
+                    {
+                        var audioInfo = await _audioImportService.GetAudioInfo(inputFile);
+                        _vmToneIdCreation.LoadAudioImportInfo(audioInfo.SampleRate, audioInfo.TotalSamples);
+                    }
+                    catch (Exception e)
+                    {
+                        await _messageDialog.ShowError("Audio import failed", e.Message, e);
+                        continue;
+                    }
+                }
+                else
+                {
+                    _vmToneIdCreation.ClearAudioImportInfo();
+                }
+
                 var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
                 var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);
                 if (result != null)
                 {
                     string toneId = _vmToneIdCreation.ToneId;
+                    var importFile = inputFile;
 
-                    var uiBgmId = await _guiStateManager.CreateNewMusicModFromToneId(toneId, inputFile, managerMod.MusicMod);
+                    if (requiresConversion)
+                    {
+                        try
+                        {
+                            IsLoading = true;
+                            IsShowingDebug = true;
+                            importFile = await _audioImportService.ConvertToNus3Audio(toneId, inputFile, managerMod.ModPath, _vmToneIdCreation.LoopStartSample, _vmToneIdCreation.LoopEndSample);
+                        }
+                        catch (Exception e)
+                        {
+                            await _messageDialog.ShowError("Audio import failed", e.Message, e);
+                            continue;
+                        }
+                        finally
+                        {
+                            IsLoading = false;
+                            IsShowingDebug = false;
+                        }
+                    }
+
+                    var uiBgmId = await _guiStateManager.CreateNewMusicModFromToneId(toneId, importFile, managerMod.MusicMod);
                     if (!string.IsNullOrEmpty(uiBgmId))
                     {
                         var vmBgmDbRootEntry = _viewModelManager.GetBgmDbRootViewModel(uiBgmId);

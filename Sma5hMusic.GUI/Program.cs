@@ -86,6 +86,7 @@ namespace Sma5hMusic.GUI
             services.AddSingleton<IDevToolsService, DevToolsService>();
             services.AddSingleton<ISeriesIconService, SeriesIconService>();
             services.AddSingleton<IVGMMusicPlayer, VGMMusicPlayer>();
+            services.AddSingleton<IAudioImportService, AudioImportService>();
             services.AddSingleton<IFileDialog, FileDialog>();
             services.AddSingleton<IMessageDialog, MessageDialog>();
             services.AddSingleton<IBuildDialog, BuildDialog>();

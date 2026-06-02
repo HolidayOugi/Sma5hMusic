@@ -46,7 +46,7 @@ namespace Sma5hMusic.GUI.Dialogs
                 {
                     Extensions = new List<string>()
                     {
-                        "brstm", "lopus", "idsp", "nus3audio"
+                        "brstm", "lopus", "idsp", "nus3audio", "mp3", "flac", "wav", "ogg", "m4a", "aac", "aiff", "aif", "wma"
                     },
                     Name = "Songs"
                 }

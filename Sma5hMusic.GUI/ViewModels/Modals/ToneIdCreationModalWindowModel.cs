@@ -33,11 +33,30 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public string ToneId { get; set; }
 
+        [Reactive]
+        public bool IsAudioImport { get; set; }
+
+        [Reactive]
+        public uint SampleRate { get; set; }
+
+        [Reactive]
+        public uint TotalSamples { get; set; }
+
+        [Reactive]
+        public uint LoopStartSample { get; set; }
+
+        [Reactive]
+        public uint LoopEndSample { get; set; }
+
+        [Reactive]
+        public double WindowHeight { get; set; }
+
         public MusicModEntries NewMusicModEntries { get; private set; }
 
         public ToneIdCreationModalWindowModel(ILogger<ToneIdCreationModalWindowModel> logger, IViewModelManager viewModelManager)
         {
             _logger = logger;
+            WindowHeight = 400;
 
             //Bind observables
             viewModelManager.ObservableBgmPropertyEntries.Connect()
@@ -62,6 +81,22 @@ namespace Sma5hMusic.GUI.ViewModels
                p => !string.IsNullOrEmpty(p) && !_bgmPropertyEntries.Select(p2 => p2.NameId).Contains(p),
                $"The ToneId already exists in the database");
 
+            this.ValidationRule(p => p.LoopEndSample,
+                p => !IsAudioImport || p > 0,
+                "Loop end sample must be greater than 0.");
+
+            this.ValidationRule(p => p.LoopStartSample,
+                p => !IsAudioImport || p <= LoopEndSample,
+                "Loop start sample must be lower than or equal to loop end sample.");
+
+            this.ValidationRule(p => p.LoopEndSample,
+                p => !IsAudioImport || LoopStartSample <= p,
+                "Loop end sample must be greater than or equal to loop start sample.");
+
+            this.ValidationRule(p => p.LoopEndSample,
+                p => !IsAudioImport || p <= TotalSamples,
+                "Loop end sample cannot be greater than the total sample count.");
+
             var canExecute = this.WhenAnyValue(x => x.ValidationContext.IsValid);
             ActionCancel = ReactiveCommand.Create<Window>(Cancel);
             ActionCreate = ReactiveCommand.Create<Window>(Select, canExecute);
@@ -70,6 +105,26 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadToneId(string toneId)
         {
             ToneId = Regex.Replace(toneId.Replace(" ", "_"), REGEX_REPLACE, string.Empty).ToLower();
+        }
+
+        public void LoadAudioImportInfo(uint sampleRate, uint totalSamples)
+        {
+            IsAudioImport = true;
+            WindowHeight = 520;
+            SampleRate = sampleRate;
+            TotalSamples = totalSamples;
+            LoopStartSample = 0;
+            LoopEndSample = totalSamples;
+        }
+
+        public void ClearAudioImportInfo()
+        {
+            IsAudioImport = false;
+            WindowHeight = 400;
+            SampleRate = 0;
+            TotalSamples = 0;
+            LoopStartSample = 0;
+            LoopEndSample = 0;
         }
 
         private void Cancel(Window w)

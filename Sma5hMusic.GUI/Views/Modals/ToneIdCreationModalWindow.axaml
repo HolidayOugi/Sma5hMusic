@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="500" Height="400" MinWidth="500"  MinHeight="400"
+        Width="500" Height="{Binding WindowHeight}" MinWidth="500" MinHeight="{Binding WindowHeight}"
         x:Class="Sma5hMusic.GUI.Views.ToneIdCreationModalWindow"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
@@ -20,6 +20,12 @@
     <StackPanel Classes="content">
       <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
       <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
+      <StackPanel IsVisible="{Binding IsAudioImport}">
+        <fields:PropertyUIntField Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
+        <fields:PropertyUIntField Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
+        <fields:PropertyUIntField x:Name="LoopStartSample" Label="Loop start sample" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in source-file samples. It is converted to 48kHz before encoding." />
+        <fields:PropertyUIntField x:Name="LoopEndSample" Label="Loop end sample" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in source-file samples." />
+      </StackPanel>
     </StackPanel>
   </DockPanel>
 </Window>
