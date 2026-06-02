@@ -573,7 +573,7 @@ namespace Sma5hMusic.GUI.ViewModels
 
             var sourceSample = MapPreviewSampleToSourceSample(rawPreviewSample);
             PreviewProgressValue = Math.Min(sourceSample, TotalSamples);
-            PreviewProgressText = $"Preview: {FormatMs(SamplesToMs((uint)PreviewProgressValue))} / {FormatMs(LoopEndMs)} - loop from {FormatMs(LoopEndMs)} to {FormatMs(LoopStartMs)}";
+            PreviewProgressText = $"Preview: {FormatMs(SamplesToMs((uint)PreviewProgressValue))} / {FormatMs(TotalTimeMs)} - loop from {FormatMs(LoopEndMs)} to {FormatMs(LoopStartMs)}";
         }
 
         private async Task CompletePreviewPlayback()
