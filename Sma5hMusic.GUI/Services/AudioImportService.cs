@@ -76,6 +76,8 @@ namespace Sma5hMusic.GUI.Services
 
                 var tempId = Guid.NewGuid().ToString("N");
                 var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
+                var restartWavFile = Path.Combine(GetTempPath(), $"{tempId}_restart.wav");
+                var endingWavFile = Path.Combine(GetTempPath(), $"{tempId}_ending.wav");
                 var previewFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
 
                 try
@@ -83,27 +85,78 @@ namespace Sma5hMusic.GUI.Services
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
                     var preRollSamples = Math.Max(1u, (uint)Math.Round(loopEnd48k * 0.1));
-                    var previewStartSample = loopEnd48k > preRollSamples ? loopEnd48k - preRollSamples : 0;
-                    _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, PreviewStartSample={PreviewStartSample}.",
-                        loopStart48k, loopEnd48k, previewStartSample);
+                    var requestedPreviewStart48k = loopEnd48k > preRollSamples ? loopEnd48k - preRollSamples : 0;
+                    var restartPreviewDuration48k = Math.Max(1u, Math.Min(preRollSamples, loopEnd48k - loopStart48k));
+                    var restartPreviewEnd48k = loopStart48k + restartPreviewDuration48k;
+                    uint relativeLoopStart48k;
+                    uint relativeLoopEnd48k;
+                    uint previewStartSample;
+                    uint firstSegmentSourceStart;
+                    uint firstSegmentPreviewLength;
+                    uint secondSegmentSourceStart = 0;
+                    uint secondSegmentPreviewStart = 0;
+                    uint secondSegmentPreviewDuration = 0;
+                    var hasSecondSegment = false;
 
-                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), tempWavFile);
+                    _logger.LogInformation("Loop preview converted samples: LoopStart48k={LoopStart48k}, LoopEnd48k={LoopEnd48k}, RequestedPreviewStart48k={RequestedPreviewStart48k}, RestartPreviewEnd48k={RestartPreviewEnd48k}.",
+                        loopStart48k, loopEnd48k, requestedPreviewStart48k, restartPreviewEnd48k);
+
+                    if (requestedPreviewStart48k <= restartPreviewEnd48k)
+                    {
+                        var clipStart48k = Math.Min(requestedPreviewStart48k, loopStart48k);
+                        ExtractWavSegment(filename, tempWavFile, clipStart48k, loopEnd48k - clipStart48k, info.SampleRate);
+                        relativeLoopStart48k = loopStart48k - clipStart48k;
+                        relativeLoopEnd48k = loopEnd48k - clipStart48k;
+                        previewStartSample = requestedPreviewStart48k - clipStart48k;
+                        firstSegmentSourceStart = ConvertSampleRate(clipStart48k, TargetSampleRate, info.SampleRate);
+                        firstSegmentPreviewLength = relativeLoopEnd48k;
+                    }
+                    else
+                    {
+                        ExtractWavSegment(filename, restartWavFile, loopStart48k, restartPreviewDuration48k, info.SampleRate);
+                        ExtractWavSegment(filename, endingWavFile, requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, info.SampleRate);
+                        RunTool(GetSoxExe(), restartWavFile, endingWavFile, tempWavFile);
+                        relativeLoopStart48k = 0;
+                        relativeLoopEnd48k = restartPreviewDuration48k + (loopEnd48k - requestedPreviewStart48k);
+                        previewStartSample = restartPreviewDuration48k;
+                        firstSegmentSourceStart = loopStartSample;
+                        firstSegmentPreviewLength = restartPreviewDuration48k;
+                        secondSegmentSourceStart = ConvertSampleRate(requestedPreviewStart48k, TargetSampleRate, info.SampleRate);
+                        secondSegmentPreviewStart = restartPreviewDuration48k;
+                        secondSegmentPreviewDuration = loopEnd48k - requestedPreviewStart48k;
+                        hasSecondSegment = true;
+                    }
+
+                    _logger.LogInformation("Loop preview relative samples: RelativeLoopStart48k={RelativeLoopStart48k}, RelativeLoopEnd48k={RelativeLoopEnd48k}, PreviewStartSample={PreviewStartSample}.",
+                        relativeLoopStart48k, relativeLoopEnd48k, previewStartSample);
+
                     _logger.LogInformation("Loop preview temp WAV created: {TempWavFile}. Exists={Exists}, Length={Length}.",
                         tempWavFile, File.Exists(tempWavFile), File.Exists(tempWavFile) ? new FileInfo(tempWavFile).Length : 0);
 
-                    RunTool(GetVGAudioCliExe(), tempWavFile, previewFile, "-l", $"{loopStart48k}-{loopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
+                    RunTool(GetVGAudioCliExe(), tempWavFile, previewFile, "-l", $"{relativeLoopStart48k}-{relativeLoopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
                     _logger.LogInformation("Loop preview LOPUS created: {PreviewFile}. Exists={Exists}, Length={Length}.",
                         previewFile, File.Exists(previewFile), File.Exists(previewFile) ? new FileInfo(previewFile).Length : 0);
 
                     return new LoopPreviewInfo
                     {
                         Filename = previewFile,
-                        StartSample = (int)previewStartSample
+                        StartSample = checked((int)previewStartSample),
+                        PreviewLoopStartSample = relativeLoopStart48k,
+                        PreviewLoopEndSample = relativeLoopEnd48k,
+                        FirstSegmentSourceStartSample = firstSegmentSourceStart,
+                        FirstSegmentPreviewStartSample = 0,
+                        FirstSegmentPreviewLengthSamples = firstSegmentPreviewLength,
+                        SecondSegmentSourceStartSample = secondSegmentSourceStart,
+                        SecondSegmentPreviewStartSample = secondSegmentPreviewStart,
+                        SecondSegmentPreviewDurationSamples = secondSegmentPreviewDuration,
+                        HasSecondSegment = hasSecondSegment
                     };
                 }
                 finally
                 {
                     DeleteTempFile(tempWavFile);
+                    DeleteTempFile(restartWavFile);
+                    DeleteTempFile(endingWavFile);
                 }
             });
         }
@@ -204,7 +257,12 @@ namespace Sma5hMusic.GUI.Services
 
         private static uint ConvertSampleRate(uint sample, uint sourceSampleRate)
         {
-            return (uint)Math.Round(sample * (TargetSampleRate / (double)sourceSampleRate));
+            return ConvertSampleRate(sample, sourceSampleRate, TargetSampleRate);
+        }
+
+        private static uint ConvertSampleRate(uint sample, uint sourceSampleRate, uint targetSampleRate)
+        {
+            return (uint)Math.Round(sample * (targetSampleRate / (double)sourceSampleRate));
         }
 
         private string RunTool(string executable, params string[] arguments)
@@ -238,6 +296,15 @@ namespace Sma5hMusic.GUI.Services
                 throw new InvalidOperationException($"{Path.GetFileName(executable)} failed: {error}{output}");
 
             return output;
+        }
+
+        private void ExtractWavSegment(string inputFile, string outputFile, uint startSample48k, uint durationSamples48k, uint sourceSampleRate)
+        {
+            var startSourceSample = ConvertSampleRate(startSample48k, TargetSampleRate, sourceSampleRate);
+            var durationSourceSample = Math.Max(1u, ConvertSampleRate(durationSamples48k, TargetSampleRate, sourceSampleRate));
+            _logger.LogInformation("Extracting preview WAV segment. Input={InputFile}, Output={OutputFile}, Start48k={Start48k}, Duration48k={Duration48k}, StartSource={StartSource}, DurationSource={DurationSource}.",
+                inputFile, outputFile, startSample48k, durationSamples48k, startSourceSample, durationSourceSample);
+            RunTool(GetSoxExe(), inputFile, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), outputFile, "trim", $"{startSourceSample}s", $"{durationSourceSample}s");
         }
 
         private string GetSoxExe()

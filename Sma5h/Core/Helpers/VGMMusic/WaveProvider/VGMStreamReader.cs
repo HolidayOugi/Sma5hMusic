@@ -26,6 +26,7 @@ namespace VGMMusic
         private int _totalPlayed = 0;
 
         public int TotalPlayed { get { return _totalPlayed / _sampleRate; } }
+        public int TotalPlayedSamples { get { return _totalPlayed; } }
 
         public int TotalSamplesToPlay { get { return _totalSamplesToPlay; } }
         public int TotalSecondsToPlay { get { return _totalSamplesToPlay / _sampleRate; } }

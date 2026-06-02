@@ -6,6 +6,7 @@ namespace VGMMusic
     {
         int TotalTime { get; }
         int CurrentTime { get; }
+        int CurrentSample { get; }
         bool Loaded { get; }
         bool Play();
         float Volume { get; set; }

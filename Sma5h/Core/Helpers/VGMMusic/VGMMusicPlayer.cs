@@ -18,6 +18,7 @@ namespace VGMMusic
 
         public int TotalTime { get { return _reader != null ? _reader.TotalSecondsToPlay : 0; } }
         public int CurrentTime { get { return _reader != null ? _reader.TotalPlayed : 0; } }
+        public int CurrentSample { get { return _reader != null ? _reader.TotalPlayedSamples : 0; } }
         public bool Loaded { get { return _reader != null && _reader.FileLoaded; } }
         public float Volume { get { return _volume; } set { _volume = value; SetVolume(value); } }
         public bool IsPlaying { get; private set; }
@@ -25,6 +26,7 @@ namespace VGMMusic
         public VGMMusicPlayer(ILogger<IVGMMusicPlayer> logger)
         {
             _logger = logger;
+            _volume = 0.8f;
 
         }
 
@@ -87,6 +89,7 @@ namespace VGMMusic
                 return false;
             }
 
+            IsPlaying = true;
             Task.Run(() => { InternalPlay(); });
             _logger.LogInformation("VGMMusicPlayer playback task started for {FileName}.", _filename);
 
@@ -165,7 +168,6 @@ namespace VGMMusic
                     _outputDevice.Init(_reader);
                     _outputDevice.Volume = Volume;
                     _outputDevice.Play();
-                    IsPlaying = true;
                     _logger.LogInformation("WaveOutEvent started. PlaybackState={PlaybackState}, Volume={Volume}", _outputDevice.PlaybackState, _outputDevice.Volume);
                     while (_outputDevice.PlaybackState == PlaybackState.Playing && !_requestStop)
                     {
@@ -192,7 +194,7 @@ namespace VGMMusic
             }
             catch (Exception e)
             {
-                _logger.LogError(e.Message, "Error while initializing/playing the song {FileName}", _filename);
+                _logger.LogError(e, "Error while initializing/playing the song {FileName}", _filename);
             }
             finally
             {

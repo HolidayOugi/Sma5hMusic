@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="500" Height="{Binding WindowHeight}" MinWidth="500" MinHeight="{Binding WindowHeight}"
+        Width="720" Height="{Binding WindowHeight} + 100" MinWidth="640" MinHeight="{Binding WindowHeight} + 100"
         x:Class="Sma5hMusic.GUI.Views.ToneIdCreationModalWindow"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
@@ -21,16 +21,24 @@
       <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
       <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
       <StackPanel IsVisible="{Binding IsAudioImport}">
-        <fields:PropertyUIntField Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
-        <fields:PropertyUIntField Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
-        <fields:PropertyUIntField Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
-        <fields:PropertyUIntField x:Name="LoopStartMs" Label="Loop start ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in milliseconds. Samples are updated from the detected sample rate." />
-        <fields:PropertyUIntField x:Name="LoopStartSample" Label="Loop start sample" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in source-file samples. It is converted to 48kHz before encoding." />
-        <fields:PropertyUIntField x:Name="LoopEndMs" Label="Loop end ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in milliseconds. Samples are updated from the detected sample rate." />
-        <fields:PropertyUIntField x:Name="LoopEndSample" Label="Loop end sample" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in source-file samples." />
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,8,0,0">
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto,Auto">
+          <fields:PropertyUIntField Grid.Row="0" Grid.Column="0" Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
+          <fields:PropertyUIntField Grid.Row="1" Grid.Column="0" Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
+          <fields:PropertyUIntField Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
+          <fields:PropertyUIntField Grid.Row="2" Grid.Column="0" x:Name="LoopStartSample" Label="Loop start sample" Value="{Binding LoopStartSample, Mode=TwoWay}" ToolTip="Loop start in samples." />
+          <fields:PropertyUIntField Grid.Row="2" Grid.Column="1" Margin="8,0,0,0" x:Name="LoopStartMs" Label="Loop start ms" Value="{Binding LoopStartMs, Mode=TwoWay}" ToolTip="Loop start in milliseconds." />
+        </Grid>
+        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto">
+          <fields:PropertyUIntField Grid.Column="0" x:Name="LoopEndSample" Label="Loop end sample" Value="{Binding LoopEndSample, Mode=TwoWay}" ToolTip="Loop end in samples." />
+          <fields:PropertyUIntField Grid.Column="1" Margin="8,0,0,0" x:Name="LoopEndMs" Label="Loop end ms" Value="{Binding LoopEndMs, Mode=TwoWay}" ToolTip="Loop end in milliseconds." />
+        </Grid>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
           <Button Content="Preview loop" Command="{Binding ActionPreviewLoop}" />
           <Button Content="Stop preview" Command="{Binding ActionStopPreview}" />
+        </StackPanel>
+        <StackPanel IsVisible="{Binding IsPreviewProgressVisible}" Margin="0,10,0,0">
+          <ProgressBar Minimum="0" Maximum="{Binding PreviewProgressMaximum}" Value="{Binding PreviewProgressValue}" Height="16" />
+          <TextBlock Text="{Binding PreviewProgressText}" HorizontalAlignment="Center" Margin="0,4,0,0" />
         </StackPanel>
       </StackPanel>
     </StackPanel>

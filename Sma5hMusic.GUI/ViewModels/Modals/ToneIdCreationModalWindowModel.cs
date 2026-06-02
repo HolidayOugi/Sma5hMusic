@@ -8,6 +8,7 @@ using ReactiveUI.Validation.Helpers;
 using Sma5h.Mods.Music.Helpers;
 using Sma5h.Mods.Music.Models;
 using Sma5hMusic.GUI.Interfaces;
+using Sma5hMusic.GUI.Models;
 using System;
 using System.Collections.ObjectModel;
 using System.IO;
@@ -31,6 +32,9 @@ namespace Sma5hMusic.GUI.ViewModels
         private const string REGEX_VALIDATION = @"^[a-z0-9_]+$";
         private bool _isUpdatingLoopFields;
         private string _loopPreviewFile;
+        private int _loopPreviewVersion;
+        private IDisposable _previewProgressSubscription;
+        private LoopPreviewInfo _loopPreviewInfo;
 
         public ReactiveCommand<Window, Unit> ActionCancel { get; }
         public ReactiveCommand<Window, Unit> ActionCreate { get; }
@@ -70,6 +74,18 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public double WindowHeight { get; set; }
 
+        [Reactive]
+        public bool IsPreviewProgressVisible { get; set; }
+
+        [Reactive]
+        public double PreviewProgressMaximum { get; set; }
+
+        [Reactive]
+        public double PreviewProgressValue { get; set; }
+
+        [Reactive]
+        public string PreviewProgressText { get; set; }
+
         public MusicModEntries NewMusicModEntries { get; private set; }
 
         public ToneIdCreationModalWindowModel(ILogger<ToneIdCreationModalWindowModel> logger, IViewModelManager viewModelManager, IAudioImportService audioImportService, IMessageDialog messageDialog, IVGMMusicPlayer musicPlayer)
@@ -79,6 +95,7 @@ namespace Sma5hMusic.GUI.ViewModels
             _messageDialog = messageDialog;
             _musicPlayer = musicPlayer;
             WindowHeight = 400;
+            PreviewProgressText = string.Empty;
 
             //Bind observables
             viewModelManager.ObservableBgmPropertyEntries.Connect()
@@ -163,7 +180,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadAudioImportInfo(uint sampleRate, uint totalSamples)
         {
             IsAudioImport = true;
-            WindowHeight = 700;
+            WindowHeight = 560;
             SampleRate = sampleRate;
             TotalSamples = totalSamples;
             TotalTimeMs = SamplesToMs(totalSamples);
@@ -189,7 +206,7 @@ namespace Sma5hMusic.GUI.ViewModels
             try
             {
                 _logger.LogInformation("Tone ID modal cancel requested. Stopping preview before close.");
-                await StopPreview();
+                await ClosePreview();
             }
             catch (Exception e)
             {
@@ -204,13 +221,19 @@ namespace Sma5hMusic.GUI.ViewModels
             try
             {
                 _logger.LogInformation("Tone ID modal choose requested. Stopping preview before close.");
-                await StopPreview();
+                await ClosePreview();
             }
             catch (Exception e)
             {
                 _logger.LogError(e, "Error while stopping loop preview on choose.");
             }
             window.Close(window);
+        }
+
+        public async Task ClosePreview()
+        {
+            _loopPreviewVersion++;
+            await StopPreview();
         }
 
         private async Task PreviewLoop()
@@ -221,9 +244,18 @@ namespace Sma5hMusic.GUI.ViewModels
                     Filename, LoopStartSample, LoopEndSample, LoopStartMs, LoopEndMs, TotalSamples);
 
                 await StopPreview();
+                var previewVersion = ++_loopPreviewVersion;
 
                 var previewInfo = await _audioImportService.CreateLoopPreview(Filename, LoopStartSample, LoopEndSample, TotalSamples);
+                if (previewVersion != _loopPreviewVersion)
+                {
+                    _logger.LogInformation("Loop preview finished after the modal was closed or another preview started. Deleting stale file {PreviewFile}.", previewInfo.Filename);
+                    DeletePreviewFile(previewInfo.Filename);
+                    return;
+                }
+
                 _loopPreviewFile = previewInfo.Filename;
+                _loopPreviewInfo = previewInfo;
                 _logger.LogInformation("Preview loop file ready. File={PreviewFile}, StartSample={StartSample}, Exists={Exists}, Length={Length}",
                     previewInfo.Filename, previewInfo.StartSample, File.Exists(previewInfo.Filename), File.Exists(previewInfo.Filename) ? new FileInfo(previewInfo.Filename).Length : 0);
 
@@ -231,6 +263,8 @@ namespace Sma5hMusic.GUI.ViewModels
                 _logger.LogInformation("Preview loop play requested. Played={Played}", played);
                 if (!played)
                     await _messageDialog.ShowError("Loop preview failed", "The preview file was created, but vgmstream could not play it.");
+                else
+                    StartPreviewProgress();
             }
             catch (Exception e)
             {
@@ -239,9 +273,29 @@ namespace Sma5hMusic.GUI.ViewModels
             }
         }
 
+        private void DeletePreviewFile(string filename)
+        {
+            if (string.IsNullOrEmpty(filename))
+                return;
+
+            try
+            {
+                if (File.Exists(filename))
+                {
+                    File.Delete(filename);
+                    _logger.LogInformation("Deleted loop preview file {LoopPreviewFile}.", filename);
+                }
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Could not delete loop preview file {LoopPreviewFile}.", filename);
+            }
+        }
+
         private async Task StopPreview()
         {
             _logger.LogInformation("StopPreview starting. PreviewFile={PreviewFile}", _loopPreviewFile);
+            StopPreviewProgress();
 
             try
             {
@@ -254,23 +308,86 @@ namespace Sma5hMusic.GUI.ViewModels
 
             if (!string.IsNullOrEmpty(_loopPreviewFile))
             {
-                try
-                {
-                    if (File.Exists(_loopPreviewFile))
-                    {
-                        File.Delete(_loopPreviewFile);
-                        _logger.LogInformation("Deleted loop preview file {LoopPreviewFile}.", _loopPreviewFile);
-                    }
-                }
-                catch (Exception e)
-                {
-                    _logger.LogWarning(e, "Could not delete loop preview file {LoopPreviewFile}.", _loopPreviewFile);
-                }
-
+                DeletePreviewFile(_loopPreviewFile);
                 _loopPreviewFile = null;
             }
 
             _logger.LogInformation("StopPreview completed.");
+        }
+
+        private void StartPreviewProgress()
+        {
+            DisposePreviewProgressTimer();
+            PreviewProgressMaximum = TotalSamples;
+            IsPreviewProgressVisible = true;
+            UpdatePreviewProgress();
+            _previewProgressSubscription = Observable.Interval(TimeSpan.FromMilliseconds(50))
+                .ObserveOn(RxApp.MainThreadScheduler)
+                .Subscribe(_ => UpdatePreviewProgress());
+        }
+
+        private void StopPreviewProgress()
+        {
+            DisposePreviewProgressTimer();
+            _loopPreviewInfo = null;
+            IsPreviewProgressVisible = false;
+            PreviewProgressValue = 0;
+            PreviewProgressText = string.Empty;
+        }
+
+        private void DisposePreviewProgressTimer()
+        {
+            _previewProgressSubscription?.Dispose();
+            _previewProgressSubscription = null;
+        }
+
+
+        private void UpdatePreviewProgress()
+        {
+            if (_loopPreviewInfo == null)
+                return;
+
+            var currentPreviewSample = WrapPreviewSample((uint)Math.Max(0, _musicPlayer.CurrentSample), _loopPreviewInfo.PreviewLoopStartSample, _loopPreviewInfo.PreviewLoopEndSample);
+            var sourceSample = MapPreviewSampleToSourceSample(currentPreviewSample);
+            PreviewProgressValue = Math.Min(sourceSample, TotalSamples);
+            PreviewProgressText = $"Preview: {FormatMs(SamplesToMs((uint)PreviewProgressValue))} / {FormatMs(LoopEndMs)} - loop from {FormatMs(LoopEndMs)} to {FormatMs(LoopStartMs)}";
+        }
+
+        private uint WrapPreviewSample(uint currentSample, uint loopStartSample, uint loopEndSample)
+        {
+            if (loopEndSample <= loopStartSample || currentSample <= loopEndSample)
+                return currentSample;
+
+            var loopLength = loopEndSample - loopStartSample;
+            return loopStartSample + ((currentSample - loopStartSample) % loopLength);
+        }
+
+        private uint MapPreviewSampleToSourceSample(uint previewSample)
+        {
+            if (_loopPreviewInfo == null)
+                return 0;
+
+            if (_loopPreviewInfo.HasSecondSegment && previewSample >= _loopPreviewInfo.SecondSegmentPreviewStartSample)
+            {
+                var offset = previewSample - _loopPreviewInfo.SecondSegmentPreviewStartSample;
+                return _loopPreviewInfo.SecondSegmentSourceStartSample + Convert48kSamplesToSourceSamples(offset);
+            }
+
+            var firstOffset = previewSample >= _loopPreviewInfo.FirstSegmentPreviewStartSample
+                ? previewSample - _loopPreviewInfo.FirstSegmentPreviewStartSample
+                : 0;
+            return _loopPreviewInfo.FirstSegmentSourceStartSample + Convert48kSamplesToSourceSamples(firstOffset);
+        }
+
+        private uint Convert48kSamplesToSourceSamples(uint samples)
+        {
+            return SampleRate == 0 ? 0 : (uint)Math.Round(samples * (SampleRate / 48000.0));
+        }
+
+        private static string FormatMs(uint milliseconds)
+        {
+            var time = TimeSpan.FromMilliseconds(milliseconds);
+            return time.TotalHours >= 1 ? time.ToString(@"h\:mm\:ss\.fff") : time.ToString(@"m\:ss\.fff");
         }
 
         private void UpdateLoopStartMsFromSample(uint sample)
