@@ -4,10 +4,14 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sma5h;
 using Sma5h.Interfaces;
+using Sma5h.Mods.Music;
+using Sma5h.Mods.Music.Helpers;
+using Sma5h.Mods.Music.Interfaces;
 using Sma5hMusic.GUI.Interfaces;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Sma5hMusic.GUI.Dialogs
@@ -17,17 +21,25 @@ namespace Sma5hMusic.GUI.Dialogs
         private readonly ILogger _logger;
         private readonly IServiceProvider _serviceProvider;
         private readonly IMessageDialog _messageDialog;
+        private readonly IMusicModManagerService _musicModManagerService;
+        private readonly IOptionsMonitor<Sma5hMusicOptions> _musicConfig;
+        private readonly IOptionsMonitor<Sma5hMusicOverrideOptions> _musicOverrideConfig;
         private readonly IStateManager _stateManager;
         private readonly IOptionsMonitor<Sma5hOptions> _config;
 
         public BuildDialog(IOptionsMonitor<Sma5hOptions> config, IServiceProvider serviceProvider,
-            IStateManager stateManager, IMessageDialog messageDialog, ILogger<BuildDialog> logger)
+            IStateManager stateManager, IMessageDialog messageDialog, IMusicModManagerService musicModManagerService,
+            IOptionsMonitor<Sma5hMusicOptions> musicConfig, IOptionsMonitor<Sma5hMusicOverrideOptions> musicOverrideConfig,
+            ILogger<BuildDialog> logger)
         {
             _logger = logger;
             _config = config;
             _serviceProvider = serviceProvider;
             _stateManager = stateManager;
             _messageDialog = messageDialog;
+            _musicModManagerService = musicModManagerService;
+            _musicConfig = musicConfig;
+            _musicOverrideConfig = musicOverrideConfig;
         }
 
         public async Task Init(Func<bool, Task> callbackSuccess = null, Func<Exception, Task> callbackError = null)
@@ -109,15 +121,17 @@ namespace Sma5hMusic.GUI.Dialogs
             }
 
             var originalOutputPath = _config.CurrentValue.OutputPath;
-            var musicPackOutputPath = Path.Combine(originalOutputPath, "Music Pack");
+            var originalMusicOutputPath = _musicConfig.CurrentValue.OutputPath;
+            var originalMusicOverrideOutputPath = _musicOverrideConfig.CurrentValue.OutputPath;
+            var musicPackOutputPath = Path.Combine(originalOutputPath, GetMusicPackFolderName());
             Directory.CreateDirectory(musicPackOutputPath);
-            _config.CurrentValue.OutputPath = musicPackOutputPath;
+            SetBuildOutputPath(musicPackOutputPath);
 
             _ = Init(async (o) =>
             {
                 if (!o)
                 {
-                    _config.CurrentValue.OutputPath = originalOutputPath;
+                    RestoreBuildOutputPath(originalOutputPath, originalMusicOutputPath, originalMusicOverrideOutputPath);
                     await Dispatcher.UIThread.InvokeAsync(async () =>
                     {
                         await _messageDialog.ShowError("Build", "Could not initialize the build.");
@@ -173,7 +187,7 @@ namespace Sma5hMusic.GUI.Dialogs
                     }
                     finally
                     {
-                        _config.CurrentValue.OutputPath = originalOutputPath;
+                        RestoreBuildOutputPath(originalOutputPath, originalMusicOutputPath, originalMusicOverrideOutputPath);
                     }
 
                     await Dispatcher.UIThread.InvokeAsync(async () =>
@@ -230,6 +244,32 @@ namespace Sma5hMusic.GUI.Dialogs
                 return false;
             }
             return true;
+        }
+
+        private void SetBuildOutputPath(string outputPath)
+        {
+            _config.CurrentValue.OutputPath = outputPath;
+            _musicConfig.CurrentValue.OutputPath = outputPath;
+            _musicOverrideConfig.CurrentValue.OutputPath = outputPath;
+        }
+
+        private void RestoreBuildOutputPath(string outputPath, string musicOutputPath, string musicOverrideOutputPath)
+        {
+            _config.CurrentValue.OutputPath = outputPath;
+            _musicConfig.CurrentValue.OutputPath = musicOutputPath;
+            _musicOverrideConfig.CurrentValue.OutputPath = musicOverrideOutputPath;
+        }
+
+        private string GetMusicPackFolderName()
+        {
+            var musicMods = _musicModManagerService.MusicMods.ToList();
+            if (musicMods.Count == 0)
+                musicMods = _musicModManagerService.RefreshMusicMods().ToList();
+
+            if (musicMods.Count == 1)
+                return CskPathSanitizer.SanitizePathSegment(musicMods[0].Name, "Music Pack");
+
+            return "Music Pack";
         }
 
         private void ClearOutputFolder()

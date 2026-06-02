@@ -4,12 +4,15 @@ This is a fork of Sma5shMusic by Deinonychus71 that adds extra functionality to 
 
 This is experimental, please make backups of your jsons and music files before using. While the core functionality has not been touched, this has yet to be tested extensively.
 
+To run the CSK music packs in-game you need to have [ARCropolis](https://github.com/raytwo/arcropolis) and the [CSK Collection](https://gamebanana.com/mods/499008) installed on your system.
+
 The following changes have been made
 
 * Building of CSK compatible Music Packs. Both a single compacted pack and multiple modular packs are available as options. The user can also choose to build only select series.
 * Icon support. For each series, an icon can be chosen from either a PNG file or a BNTX file. In the former case, the PNG will be resized and converted automatically. For the best results, please use a transparent PNG with a white icon inside. The series icons will then be automatically copied to the Output folder at build time.
 * If not assigned manually to a playlist, automatically adds all songs from an added Series to a playlist, to ensure they always show up in-game.
-* Fixes bug where certain Nus3bank IDs values may cause songs not to play in-game (tentative, needs extensive testing)
+* Builds are now saved to a subfolder of the Output directory
+* Fixes bug where certain Nus3bank IDs values may cause songs to not play in-game (tentative, needs extensive testing)
 
 
 Below the original README:
