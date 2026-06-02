@@ -22,8 +22,8 @@ namespace Sma5h.Mods.Music.CskPackBuild
             var destFolder = Path.Combine(outputRoot, seriesFolderName, "stream;", "sound", "bgm");
             Directory.CreateDirectory(destFolder);
 
-            CopyIfExists(nus3AudioSrc, Path.Combine(destFolder, Path.GetFileName(nus3AudioSrc)));
-            CopyIfExists(nus3BankSrc, Path.Combine(destFolder, Path.GetFileName(nus3BankSrc)));
+            MoveIfExists(nus3AudioSrc, Path.Combine(destFolder, Path.GetFileName(nus3AudioSrc)));
+            MoveIfExists(nus3BankSrc, Path.Combine(destFolder, Path.GetFileName(nus3BankSrc)));
         }
 
         #endregion
@@ -97,11 +97,14 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         #region Utils
 
-        private void CopyIfExists(string source, string destination)
+        private void MoveIfExists(string source, string destination)
         {
             if (File.Exists(source))
             {
-                File.Copy(source, destination, true);
+                if (File.Exists(destination))
+                    File.Delete(destination);
+
+                File.Move(source, destination);
             }
             else
             {

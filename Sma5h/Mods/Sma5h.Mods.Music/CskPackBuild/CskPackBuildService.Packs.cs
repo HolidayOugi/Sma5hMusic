@@ -76,7 +76,8 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 .GroupBy(p => p.Key, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(p => p.Key, p => p.First().Value, StringComparer.OrdinalIgnoreCase);
 
-            var packRoot = Path.Combine(outputRoot, SinglePackFolderName);
+            var singlePackFolderName = GetSingleCskPackFolderName(contextList);
+            var packRoot = Path.Combine(outputRoot, singlePackFolderName);
             var databaseFolder = Path.Combine(packRoot, "database");
             var uiFolder = Path.Combine(packRoot, "ui", "message");
             Directory.CreateDirectory(databaseFolder);
@@ -96,7 +97,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                     songData,
                     msgBgmEntries,
                     msgTitleEntries,
-                    SinglePackFolderName,
+                    singlePackFolderName,
                     outputRoot,
                     generatedBgmFolder,
                     buildResources.PlaylistData,
@@ -126,6 +127,14 @@ namespace Sma5h.Mods.Music.CskPackBuild
             var outputJsonPath = Path.Combine(databaseFolder, "song_data.json");
             File.WriteAllText(outputJsonPath, JsonConvert.SerializeObject(songData, Formatting.Indented), new UTF8Encoding(false));
             _logger.LogInformation("[CSK] Saved single CSK pack: {SavedPath}", outputJsonPath);
+        }
+
+        private static string GetSingleCskPackFolderName(IReadOnlyList<CskModContext> contexts)
+        {
+            if (contexts.Count == 1 && !string.IsNullOrWhiteSpace(contexts[0].SafePackName))
+                return contexts[0].SafePackName;
+
+            return SinglePackFolderName;
         }
 
         #endregion
