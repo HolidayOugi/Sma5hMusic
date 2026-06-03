@@ -22,11 +22,45 @@ namespace Sma5hMusic.GUI.Helpers
             }
         }
 
-        public static void DeleteRecursive(string directory)
+        public static void DeleteContents(string directory)
         {
             try
             {
-                if (!string.IsNullOrWhiteSpace(directory) && Directory.Exists(directory))
+                if (string.IsNullOrWhiteSpace(directory) || !Directory.Exists(directory))
+                    return;
+
+                foreach (var file in Directory.EnumerateFiles(directory))
+                    DeleteFile(file);
+
+                foreach (var childDirectory in Directory.EnumerateDirectories(directory))
+                    DeleteDirectory(childDirectory);
+
+                DeleteIfEmpty(directory);
+            }
+            catch
+            {
+                // Best effort cleanup.
+            }
+        }
+
+        private static void DeleteFile(string file)
+        {
+            try
+            {
+                if (File.Exists(file))
+                    File.Delete(file);
+            }
+            catch
+            {
+                // Best effort cleanup.
+            }
+        }
+
+        private static void DeleteDirectory(string directory)
+        {
+            try
+            {
+                if (Directory.Exists(directory))
                     Directory.Delete(directory, true);
             }
             catch

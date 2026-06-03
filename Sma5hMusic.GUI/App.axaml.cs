@@ -7,6 +7,7 @@ using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.ViewModels;
 using Splat;
+using System.IO;
 using static Sma5hMusic.GUI.Helpers.StylesHelper;
 
 namespace Sma5hMusic.GUI
@@ -30,9 +31,32 @@ namespace Sma5hMusic.GUI
                 var mainWindow = Locator.Current.GetService<IDialogWindow>() as Window;
                 mainWindow.DataContext = Locator.Current.GetService<MainWindowViewModel>();
                 desktop.MainWindow = mainWindow;
+
+                desktop.Exit += (sender, args) =>
+                {
+                    CleanupTempDirectory();
+                };
             }
 
             base.OnFrameworkInitializationCompleted();
+        }
+
+        private static void CleanupTempDirectory()
+        {
+            var tempPath = Program.Configuration["TempPath"];
+
+            if (string.IsNullOrWhiteSpace(tempPath))
+                tempPath = "Temp";
+
+            var fullTempPath = Path.IsPathRooted(tempPath)
+                ? tempPath
+                : Path.Combine(Directory.GetCurrentDirectory(), tempPath);
+
+            TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "AudioImport"));
+            TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "YoutubeImport"));
+            TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "Nus3AudioBatchNormalization"));
+
+            TempDirectoryHelper.DeleteIfEmpty(fullTempPath);
         }
     }
 }
