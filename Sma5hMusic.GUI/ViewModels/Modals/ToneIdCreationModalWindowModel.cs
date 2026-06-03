@@ -382,6 +382,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 var loopPoints = await _audioImportService.CalculateAutoLoopPoints(Filename, SampleRate, TotalSamples);
                 if (loopPoints.Count == 0)
                 {
+                    StopAutoLoopStatusAnimation();
+                    IsCalculatingAutoLoops = false;
+
                     _logger.LogInformation("pymusiclooper did not return any valid loop points for {Filename}.", Filename);
                     AutoLoopStatus = "No automatic loop points found.";
                     await _messageDialog.ShowInformation("No loop points found", "pymusiclooper did not find any usable loop points for this audio file.");
@@ -399,20 +402,36 @@ namespace Sma5hMusic.GUI.ViewModels
             }
             catch (FileNotFoundException e)
             {
+                StopAutoLoopStatusAnimation();
+                IsCalculatingAutoLoops = false;
+
                 _logger.LogError(e, "pymusiclooper is not available.");
-                AutoLoopStatus = "pymusiclooper is not available.";
-                await _messageDialog.ShowError("pymusiclooper not found", "pymusiclooper is not installed or is not available in PATH.", e);
+                AutoLoopStatus = string.Empty;
+
+                await _messageDialog.ShowError(
+                    "pymusiclooper not found",
+                    "pymusiclooper was not found. Please install it and add it to PATH.",
+                    e
+                );
             }
             catch (Exception e)
             {
+                StopAutoLoopStatusAnimation();
+                IsCalculatingAutoLoops = false;
+
                 _logger.LogError(e, "Automatic loop point calculation failed.");
-                AutoLoopStatus = "Automatic loop point calculation failed.";
-                await _messageDialog.ShowError("Automatic loop point calculation failed", e.Message, e);
+                AutoLoopStatus = string.Empty;
+
+                await _messageDialog.ShowError(
+                    "Automatic loop point calculation failed",
+                    e.Message,
+                    e
+                );
             }
             finally
             {
-                IsCalculatingAutoLoops = false;
                 StopAutoLoopStatusAnimation();
+                IsCalculatingAutoLoops = false;
             }
         }
 

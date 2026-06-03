@@ -353,9 +353,28 @@ namespace Sma5hMusic.GUI.Services
             }
             catch (Win32Exception e)
             {
-                _logger.LogError(e, "pymusiclooper could not be launched. Make sure pymusiclooper is installed and available in PATH.");
-                throw new FileNotFoundException("pymusiclooper was not found. Please install pymusiclooper and make sure it is available in PATH.", "pymusiclooper", e);
+                _logger.LogError(e, "pymusiclooper could not be launched.");
+                throw new FileNotFoundException(
+                    "pymusiclooper was not found. Please install it and add it to PATH.",
+                    "pymusiclooper",
+                    e
+                );
             }
+            catch (InvalidOperationException e) when (IsPymusiclooperMissingError(e.Message))
+            {
+                _logger.LogError(e, "python was launched, but the pymusiclooper module was not found.");
+                throw new FileNotFoundException(
+                    "pymusiclooper was not found. Please install it and add it to PATH.",
+                    "pymusiclooper",
+                    e
+                );
+            }
+        }
+
+        private static bool IsPymusiclooperMissingError(string message)
+        {
+            return !string.IsNullOrWhiteSpace(message) &&
+                message.IndexOf("No module named pymusiclooper", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private string RunCommand(string executable, params string[] arguments)

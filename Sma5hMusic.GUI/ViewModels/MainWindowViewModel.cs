@@ -604,9 +604,13 @@ namespace Sma5hMusic.GUI.ViewModels
             var singleSongs = links.Count(p => !p.IsPlaylist);
             var playlists = links.Count(p => p.IsPlaylist);
 
+            var singleSongsText = singleSongs == 1 ? "single song" : "single songs";
+            var playlistsText = playlists == 1 ? "playlist" : "playlists";
+            var invalidLinksText = invalidLinks == 1 ? "invalid link" : "invalid links";
+
             await _messageDialog.ShowInformation(
                 "YouTube import",
-                $"Found {singleSongs} single songs, {playlists} playlists and {invalidLinks} invalid links. Starting download."
+                $"Found {singleSongs} {singleSongsText}, {playlists} {playlistsText} and {invalidLinks} {invalidLinksText}. Starting download."
             );
 
             await DownloadYoutubeLinksAndImport(managerMod, links, false);
@@ -626,6 +630,8 @@ namespace Sma5hMusic.GUI.ViewModels
 
             var downloadedFiles = new List<string>();
             var downloads = new List<YoutubeDownloadResult>();
+            var failedLinks = new List<string>();
+            var totalSongs = 0;
 
             using var cancellationTokenSource = new CancellationTokenSource();
 
@@ -647,8 +653,6 @@ namespace Sma5hMusic.GUI.ViewModels
                     if (!confirm)
                         return;
                 }
-
-                var totalSongs = 0;
 
                 foreach (var link in links)
                 {
@@ -708,36 +712,53 @@ namespace Sma5hMusic.GUI.ViewModels
 
                     var completedBeforeThisDownload = completedSongs;
 
-                    var download = await _youtubeImportService.DownloadAudio(
-                        link.Url,
-                        link.IsPlaylist,
-                        totalSongs,
-                        (current, total) =>
-                        {
-                            Dispatcher.UIThread.Post(() =>
+                    try
+                    {
+                        var download = await _youtubeImportService.DownloadAudio(
+                            link.Url,
+                            link.IsPlaylist,
+                            totalSongs,
+                            (current, total) =>
                             {
-                                progressVm.SetProgress(completedBeforeThisDownload + current, totalSongs);
-                            });
-                        },
-                        cancellationTokenSource.Token
-                    );
+                                Dispatcher.UIThread.Post(() =>
+                                {
+                                    progressVm.SetProgress(completedBeforeThisDownload + current, totalSongs);
+                                });
+                            },
+                            cancellationTokenSource.Token
+                        );
 
-                    downloads.Add(download);
+                        downloads.Add(download);
 
-                    var files = download.Filenames?
-                        .Where(File.Exists)
-                        .ToList() ?? new List<string>();
+                        var files = download.Filenames?
+                            .Where(File.Exists)
+                            .ToList() ?? new List<string>();
 
-                    if (files.Count == 0 && File.Exists(download.Filename))
-                        files.Add(download.Filename);
+                        if (files.Count == 0 && File.Exists(download.Filename))
+                            files.Add(download.Filename);
 
-                    downloadedFiles.AddRange(files);
+                        downloadedFiles.AddRange(files);
 
-                    completedSongs += files.Count;
+                        completedSongs += files.Count;
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        throw;
+                    }
+                    catch (Exception e)
+                    {
+                        _logger.LogWarning(e, "YouTube download failed for URL {Url}. Continuing with the next link.", link.Url);
+
+                        failedLinks.Add(link.Url);
+
+                        // Count the failed single song as processed, otherwise the bar can remain stuck at 1/2, 31/32, etc.
+                        if (!link.IsPlaylist)
+                            completedSongs++;
+                    }
 
                     await Dispatcher.UIThread.InvokeAsync(() =>
                     {
-                        progressVm.SetProgress(completedSongs, totalSongs);
+                        progressVm.SetProgress(Math.Min(completedSongs, totalSongs), totalSongs);
                     });
                 }
             }
@@ -785,11 +806,34 @@ namespace Sma5hMusic.GUI.ViewModels
 
             if (downloadedFiles.Count == 0)
             {
-                await _messageDialog.ShowError(
-                    "YouTube Import failed",
-                    "The YouTube Download completed, but no audio files were found."
-                );
+                if (failedLinks.Count > 0)
+                {
+                    var songText = failedLinks.Count == 1 ? "song" : "songs";
+
+                    await _messageDialog.ShowError(
+                        "YouTube Import Failed",
+                        $"yt-dlp could not find {failedLinks.Count} {songText}. Please check that the link is correct."
+                    );
+                }
+                else
+                {
+                    await _messageDialog.ShowError(
+                        "YouTube Import Failed",
+                        "The YouTube Download completed, but no audio files were found."
+                    );
+                }
+
                 return;
+            }
+
+            if (failedLinks.Count > 0)
+            {
+                var songText = failedLinks.Count == 1 ? "song" : "songs";
+
+                await _messageDialog.ShowError(
+                    "YouTube Import Warning",
+                    $"yt-dlp could not find {failedLinks.Count} {songText}. Please check that the link is correct."
+                );
             }
 
             try
