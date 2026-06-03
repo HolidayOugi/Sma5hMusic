@@ -11,6 +11,9 @@
         //Tools Path
         public string ToolsPath { get; set; }
 
+        //yt-dlp executable path
+        public string YtDlpPath { get; set; }
+
         //Temp Path
         public string TempPath { get; set; }
 

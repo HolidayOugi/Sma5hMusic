@@ -87,6 +87,7 @@ namespace Sma5hMusic.GUI
             services.AddSingleton<ISeriesIconService, SeriesIconService>();
             services.AddSingleton<IVGMMusicPlayer, VGMMusicPlayer>();
             services.AddSingleton<IAudioImportService, AudioImportService>();
+            services.AddSingleton<IYoutubeImportService, YoutubeImportService>();
             services.AddSingleton<IFileDialog, FileDialog>();
             services.AddSingleton<IMessageDialog, MessageDialog>();
             services.AddSingleton<IBuildDialog, BuildDialog>();
@@ -121,6 +122,7 @@ namespace Sma5hMusic.GUI
                 { "OutputPath", "ArcOutput" },
                 { "BackupPath", "Backup" },
                 { "ToolsPath", "Tools" },
+                { "YtDlpPath", "" },
                 { "TempPath", "Temp" },
                 { "LogPath", "Log" },
                 { "SkipOutputPathCleanupConfirmation", "false" },

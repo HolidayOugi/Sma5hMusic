@@ -135,6 +135,37 @@ namespace Sma5hMusic.GUI.Dialogs
             return null;
         }
 
+        public async Task<string> OpenFileDialogYtDlp(Window parent = null)
+        {
+            _logger.LogDebug("Opening yt-dlp FileDialog...");
+
+            _openFileDialog.AllowMultiple = false;
+            _openFileDialog.Directory = _savedDirectory;
+            _openFileDialog.Filters = new List<FileDialogFilter>()
+            {
+                new FileDialogFilter()
+                {
+                    Extensions = new List<string>() { "exe" },
+                    Name = "yt-dlp executable"
+                }
+            };
+            _openFileDialog.Title = "Select yt-dlp.exe";
+
+            string[] results;
+            if (parent == null)
+                results = await _openFileDialog.ShowAsync(_rootDialogWindow.Window);
+            else
+                results = await _openFileDialog.ShowAsync(parent);
+
+            if (results.Length > 0)
+            {
+                _savedDirectory = Path.GetDirectoryName(results[0]);
+                return results[0];
+            }
+
+            return null;
+        }
+
         public async Task<string> SaveFileCSVDialog(Window parent = null)
         {
             _logger.LogDebug("Opening SaveDialog...");

@@ -23,6 +23,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly ReadOnlyObservableCollection<LocaleViewModel> _locales;
         private readonly BehaviorSubject<string> _whenLocaleChanged;
         private readonly Subject<ModEntryViewModel> _whenNewRequestToAddBgmEntry;
+        private readonly Subject<ModEntryViewModel> _whenNewRequestToAddYoutubeBgmEntry;
         private readonly Subject<Unit> _whenNewRequestToAddModEntry;
         private readonly Subject<Unit> _whenNewRequestToAddSeriesEntry;
         private readonly Subject<Unit> _whenNewRequestToAddGameEntry;
@@ -39,6 +40,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReadOnlyObservableCollection<ModEntryViewModel> Mods { get { return _mods; } }
         public ReadOnlyObservableCollection<LocaleViewModel> Locales { get { return _locales; } }
         public IObservable<ModEntryViewModel> WhenNewRequestToAddBgmEntry { get { return _whenNewRequestToAddBgmEntry; } }
+        public IObservable<ModEntryViewModel> WhenNewRequestToAddYoutubeBgmEntry { get { return _whenNewRequestToAddYoutubeBgmEntry; } }
         public IObservable<Unit> WhenNewRequestToAddModEntry { get { return _whenNewRequestToAddModEntry; } }
         public IObservable<Unit> WhenNewRequestToAddSeriesEntry { get { return _whenNewRequestToAddSeriesEntry; } }
         public IObservable<Unit> WhenNewRequestToAddGameEntry { get { return _whenNewRequestToAddGameEntry; } }
@@ -57,11 +59,13 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionDeleteSeries { get; }
         public ReactiveCommand<Unit, Unit> ActionDeleteGame { get; }
         public ReactiveCommand<ModEntryViewModel, Unit> ActionAddNewBgm { get; }
+        public ReactiveCommand<ModEntryViewModel, Unit> ActionAddNewYoutubeBgm { get; }
 
         public ContextMenuViewModel(IOptionsMonitor<ApplicationSettings> config, IViewModelManager viewModelManager, ILogger<BgmSongsViewModel> logger)
         {
             _logger = logger;
             _whenNewRequestToAddBgmEntry = new Subject<ModEntryViewModel>();
+            _whenNewRequestToAddYoutubeBgmEntry = new Subject<ModEntryViewModel>();
             _whenLocaleChanged = new BehaviorSubject<string>(config.CurrentValue.Sma5hMusicGUI.DefaultGUILocale);
             _whenNewRequestToAddModEntry = new Subject<Unit>();
             _whenNewRequestToAddSeriesEntry = new Subject<Unit>();
@@ -103,6 +107,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionEditSeries = ReactiveCommand.Create(EditSeries);
             ActionEditGame = ReactiveCommand.Create(EditGame);
             ActionAddNewBgm = ReactiveCommand.Create<ModEntryViewModel>(AddNewBgmEntry);
+            ActionAddNewYoutubeBgm = ReactiveCommand.Create<ModEntryViewModel>(AddNewYoutubeBgmEntry);
             ActionDeleteSeries = ReactiveCommand.Create(DeleteSeries);
             ActionDeleteGame = ReactiveCommand.Create(DeleteGame);
         }
@@ -117,6 +122,12 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             _logger.LogDebug("Clicked New Bgm");
             _whenNewRequestToAddBgmEntry.OnNext(vmMusicMod);
+        }
+
+        public void AddNewYoutubeBgmEntry(ModEntryViewModel vmMusicMod)
+        {
+            _logger.LogDebug("Clicked New YouTube Bgm");
+            _whenNewRequestToAddYoutubeBgmEntry.OnNext(vmMusicMod);
         }
 
         public void AddNewSeries()
@@ -178,6 +189,11 @@ namespace Sma5hMusic.GUI.ViewModels
             {
                 _whenNewRequestToAddBgmEntry?.OnCompleted();
                 _whenNewRequestToAddBgmEntry?.Dispose();
+            }
+            if (_whenNewRequestToAddYoutubeBgmEntry != null)
+            {
+                _whenNewRequestToAddYoutubeBgmEntry?.OnCompleted();
+                _whenNewRequestToAddYoutubeBgmEntry?.Dispose();
             }
             if (_whenNewRequestToAddModEntry != null)
             {

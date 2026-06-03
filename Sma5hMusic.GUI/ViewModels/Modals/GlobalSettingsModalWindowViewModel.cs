@@ -63,7 +63,7 @@ namespace Sma5hMusic.GUI.ViewModels
             _fileDialog = fileDialog;
 
             ActionWipeAudioCache = ReactiveCommand.CreateFromTask(OnWipeAudioCache);
-            ActionOpenFileDialog = ReactiveCommand.CreateFromTask<string>(OnChooseFolder);
+            ActionOpenFileDialog = ReactiveCommand.CreateFromTask<string>(OnChoosePath);
 
             this.ValidationRule(p => p.SelectedItem.OutputPath,
                 p => !string.IsNullOrEmpty(p) && Directory.Exists(p),
@@ -96,6 +96,10 @@ namespace Sma5hMusic.GUI.ViewModels
             this.ValidationRule(p => p.SelectedItem.ToolsPath,
                 p => !string.IsNullOrEmpty(p) && Directory.Exists(p),
                 "This directory does not exist.");
+
+            this.ValidationRule(p => p.SelectedItem.YtDlpPath,
+                p => string.IsNullOrWhiteSpace(p) || File.Exists(p),
+                "This file does not exist.");
         }
 
         public async Task OnWipeAudioCache()
@@ -103,9 +107,11 @@ namespace Sma5hMusic.GUI.ViewModels
             await _guiStateManager.WipeAudioCache();
         }
 
-        public async Task OnChooseFolder(string param)
+        public async Task OnChoosePath(string param)
         {
-            var result = await _fileDialog.OpenFolderDialog();
+            var result = param == "YtDlpPath"
+                ? await _fileDialog.OpenFileDialogYtDlp()
+                : await _fileDialog.OpenFolderDialog();
             if (!string.IsNullOrEmpty(result))
             {
                 switch (param)
@@ -127,6 +133,9 @@ namespace Sma5hMusic.GUI.ViewModels
                         break;
                     case "ToolsPath":
                         SelectedItem.ToolsPath = result;
+                        break;
+                    case "YtDlpPath":
+                        SelectedItem.YtDlpPath = result;
                         break;
                     case "CachePath":
                         SelectedItem.CachePath = result;

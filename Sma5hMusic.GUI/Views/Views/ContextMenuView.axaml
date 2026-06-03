@@ -15,6 +15,15 @@
           </Style>
         </MenuItem.Styles>
       </MenuItem>
+      <MenuItem Header="Import Songs from YouTube to..." Items="{Binding Mods}" IsEnabled="True">
+        <MenuItem.Styles>
+          <Style Selector="MenuItem > MenuItem">
+            <Setter Property="Header" Value="{Binding Name}"/>
+            <Setter Property="Command" Value="{Binding $parent[Menu].DataContext.ActionAddNewYoutubeBgm}"/>
+            <Setter Property="CommandParameter" Value="{Binding .}"/>
+          </Style>
+        </MenuItem.Styles>
+      </MenuItem>
       <MenuItem Header="Manage..." IsEnabled="True">
         <MenuItem Header="Create Series" Command="{Binding ActionNewSeries}" />
         <MenuItem Header="Edit a Series" Command="{Binding ActionEditSeries}"/>

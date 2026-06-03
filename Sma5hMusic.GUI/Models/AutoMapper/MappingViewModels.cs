@@ -54,7 +54,8 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                     ModPath = p.ModOverridePath
                 }))
                 .ForMember(i => i.TempPath, me => me.MapFrom(p => p.TempPath))
-                .ForMember(i => i.ToolsPath, me => me.MapFrom(p => p.ToolsPath));
+                .ForMember(i => i.ToolsPath, me => me.MapFrom(p => p.ToolsPath))
+                .ForMember(i => i.YtDlpPath, me => me.MapFrom(p => p.YtDlpPath));
             CreateMap<ApplicationSettings, GUI.ViewModels.GlobalConfigurationViewModel>()
                 .ForMember(i => i.GameResourcesPath, me => me.MapFrom(p => p.GameResourcesPath))
                 .ForMember(i => i.LogPath, me => me.MapFrom(p => p.LogPath))
@@ -87,7 +88,8 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.HideSeriesColumn, me => me.MapFrom(p => p.Sma5hMusicGUI.HideSeriesColumn))
                 .ForMember(i => i.ModOverridePath, me => me.MapFrom(p => p.Sma5hMusicOverride.ModPath))
                 .ForMember(i => i.TempPath, me => me.MapFrom(p => p.TempPath))
-                .ForMember(i => i.ToolsPath, me => me.MapFrom(p => p.ToolsPath));
+                .ForMember(i => i.ToolsPath, me => me.MapFrom(p => p.ToolsPath))
+                .ForMember(i => i.YtDlpPath, me => me.MapFrom(p => p.YtDlpPath));
 
             CreateMap<GUI.ViewModels.StageEntryViewModel, StageEntry>()
                 .ForMember(i => i.UiStageId, me => me.Ignore())

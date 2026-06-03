@@ -12,6 +12,7 @@ using Sma5h.Mods.Music.Interfaces;
 using Sma5hMusic.GUI.Dialogs;
 using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
+using Sma5hMusic.GUI.Models;
 using Sma5hMusic.GUI.Views;
 using System;
 using System.Collections.Generic;
@@ -34,6 +35,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IMessageDialog _messageDialog;
         private readonly IFileDialog _fileDialog;
         private readonly IAudioImportService _audioImportService;
+        private readonly IYoutubeImportService _youtubeImportService;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
         private readonly ICskPackBuildService _cskPackBuildService;
@@ -57,6 +59,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly ModalDialog<GlobalSettingsModalWindow, GlobalSettingsModalWindowViewModel, GlobalConfigurationViewModel> _dialogGlobalSettingsEditor;
         private readonly PlaylistStageAssignementModalWindowViewModel _vmStageAssignement;
         private readonly ToneIdCreationModalWindowModel _vmToneIdCreation;
+        private readonly YoutubeImportModalWindowViewModel _vmYoutubeImport;
 
         [Reactive]
         public string Title { get; set; }
@@ -97,13 +100,14 @@ namespace Sma5hMusic.GUI.ViewModels
 
 
         public MainWindowViewModel(IServiceProvider serviceProvider, IViewModelManager viewModelManager, IGUIStateManager guiStateManager, IMapper mapper, IVGMMusicPlayer musicPlayer,
-            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
+            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, IYoutubeImportService youtubeImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
         {
             _viewModelManager = viewModelManager;
             _guiStateManager = guiStateManager;
             _musicPlayer = musicPlayer;
             _fileDialog = fileDialog;
             _audioImportService = audioImportService;
+            _youtubeImportService = youtubeImportService;
             _buildDialog = buildDialog;
             _cskPackBuildService = cskPackBuildService;
             _messageDialog = messageDialog;
@@ -157,6 +161,7 @@ namespace Sma5hMusic.GUI.ViewModels
             _dialogGamePicker = new ModalDialog<GamePickerModalWindow, GamePickerModalWindowViewModel, GameTitleEntryViewModel>(vmGamePicker);
             _dialogGameDeletePicker = new ModalDialog<GameDeletePickerModalWindow, GameDeletePickerModalWindowViewModel, GameTitleEntryViewModel>(vmGameDeletePicker);
             _vmToneIdCreation = ActivatorUtilities.CreateInstance<ToneIdCreationModalWindowModel>(serviceProvider);
+            _vmYoutubeImport = ActivatorUtilities.CreateInstance<YoutubeImportModalWindowViewModel>(serviceProvider);
 
             //Setup BgmEditor
             var vmBgmEditor = ActivatorUtilities.CreateInstance<BgmPropertiesModalWindowViewModel>(serviceProvider);
@@ -176,6 +181,7 @@ namespace Sma5hMusic.GUI.ViewModels
 
             //Listen to requests from children
             VMContextMenu.WhenNewRequestToAddBgmEntry.Subscribe(async (o) => await AddNewBgmEntry(o));
+            VMContextMenu.WhenNewRequestToAddYoutubeBgmEntry.Subscribe(async (o) => await AddNewYoutubeBgmEntry(o));
             VMContextMenu.WhenNewRequestToAddModEntry.Subscribe(async (o) => await AddNewOrEditMod());
             VMContextMenu.WhenNewRequestToAddSeriesEntry.Subscribe(async (o) => await AddNewOrEditSeries());
             VMContextMenu.WhenNewRequestToAddGameEntry.Subscribe(async (o) => await AddNewOrEditGame());
@@ -492,9 +498,62 @@ namespace Sma5hMusic.GUI.ViewModels
             if (results.Length == 0)
                 return;
 
+            await ImportAudioFiles(managerMod, results);
+        }
+
+        public async Task AddNewYoutubeBgmEntry(ModEntryViewModel managerMod)
+        {
+            if (managerMod?.MusicMod == null)
+            {
+                await _messageDialog.ShowError("Error", "The mod could not be found.");
+                return;
+            }
+
+            if (!_youtubeImportService.IsConfigured())
+            {
+                await _messageDialog.ShowError("yt-dlp is not configured", "Set the path to yt-dlp.exe in Global Settings before importing songs from YouTube.");
+                return;
+            }
+
+            _vmYoutubeImport.Reset();
+            var modalYoutubeImport = new YoutubeImportModalWindow() { DataContext = _vmYoutubeImport };
+            var result = await modalYoutubeImport.ShowDialog<YoutubeImportModalWindow>(_rootDialog.Window);
+            if (result == null)
+                return;
+
+            YoutubeDownloadResult download = null;
+            try
+            {
+                IsLoading = true;
+                IsShowingDebug = true;
+                download = await _youtubeImportService.DownloadAudio(_vmYoutubeImport.Url);
+            }
+            catch (Exception e)
+            {
+                await _messageDialog.ShowError("YouTube import failed", e.Message, e);
+                return;
+            }
+            finally
+            {
+                IsLoading = false;
+                IsShowingDebug = false;
+            }
+
+            try
+            {
+                await ImportAudioFiles(managerMod, new[] { download.Filename });
+            }
+            finally
+            {
+                _youtubeImportService.CleanupDownload(download);
+            }
+        }
+
+        private async Task ImportAudioFiles(ModEntryViewModel managerMod, IReadOnlyCollection<string> inputFiles)
+        {
             //TODO - Handle anything saving in a specific service
-            _logger.LogInformation("Adding {NbrFiles} files to Mod {ModPath}", results.Length, managerMod.ModPath);
-            foreach (var inputFile in results)
+            _logger.LogInformation("Adding {NbrFiles} files to Mod {ModPath}", inputFiles.Count, managerMod.ModPath);
+            foreach (var inputFile in inputFiles)
             {
                 _vmToneIdCreation.Filename = inputFile;
                 _vmToneIdCreation.LoadToneId(Path.GetFileNameWithoutExtension(inputFile));
