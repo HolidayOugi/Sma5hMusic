@@ -35,7 +35,7 @@ namespace Sma5hMusic.GUI.Services
         }
 
 
-        public async Task<YoutubeDownloadResult> DownloadAudio(string url)
+        public async Task<YoutubeDownloadResult> DownloadAudio(string url, bool allowPlaylist = false)
         {
             return await Task.Run(() =>
             {
@@ -58,7 +58,7 @@ namespace Sma5hMusic.GUI.Services
                     var outputTemplate = Path.Combine(tempDirectory, "%(title)s [%(id)s].%(ext)s");
                     var output = RunYtDlp(
                         ytexecutable,
-                        "--no-playlist",
+                        allowPlaylist ? "--yes-playlist" : "--no-playlist",
                         "--no-progress",
                         "--format", "bestaudio/best",
                         "--extract-audio",
@@ -71,21 +71,34 @@ namespace Sma5hMusic.GUI.Services
                         url
                     );
 
-                    var filename = output
+                    var filenames = output
                         .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
                         .Select(p => p.Trim().Trim('"'))
-                        .LastOrDefault(File.Exists);
+                        .Where(File.Exists)
+                        .Distinct(StringComparer.OrdinalIgnoreCase)
+                        .ToList();
 
-                    if (string.IsNullOrWhiteSpace(filename))
-                        filename = Directory.EnumerateFiles(tempDirectory, "*.mp3").SingleOrDefault();
+                    if (filenames.Count == 0)
+                    {
+                        filenames = Directory
+                            .EnumerateFiles(tempDirectory, "*.mp3")
+                            .OrderBy(p => p)
+                            .ToList();
+                    }
 
-                    if (string.IsNullOrWhiteSpace(filename) || !File.Exists(filename))
-                        throw new InvalidOperationException("yt-dlp completed, but the downloaded audio file could not be found.");
+                    if (filenames.Count == 0)
+                        throw new InvalidOperationException("yt-dlp completed, but the downloaded audio files could not be found.");
 
-                    _logger.LogInformation("YouTube audio download completed. Url={Url}, Filename={Filename}.", url, filename);
+                    _logger.LogInformation(
+                        "YouTube audio download completed. Url={Url}, Files={Files}.",
+                        url,
+                        string.Join(", ", filenames)
+                    );
+
                     return new YoutubeDownloadResult
                     {
-                        Filename = filename,
+                        Filename = filenames[0],
+                        Filenames = filenames,
                         TempDirectory = tempDirectory
                     };
                 }
@@ -107,7 +120,11 @@ namespace Sma5hMusic.GUI.Services
 
         private string RunYtDlp(string executable, params string[] arguments)
         {
-            _logger.LogInformation("Running yt-dlp: {Executable} {Arguments}", executable, string.Join(" ", arguments.Select(p => $"\"{p}\"")));
+            _logger.LogInformation(
+                "Running yt-dlp: {Executable} {Arguments}",
+                executable,
+                string.Join(" ", arguments.Select(p => $"\"{p}\""))
+            );
 
             var startInfo = new ProcessStartInfo
             {
@@ -121,12 +138,51 @@ namespace Sma5hMusic.GUI.Services
             foreach (var argument in arguments)
                 startInfo.ArgumentList.Add(argument);
 
-            using var process = Process.Start(startInfo);
-            var output = process.StandardOutput.ReadToEnd();
-            var error = process.StandardError.ReadToEnd();
+            using var process = new Process
+            {
+                StartInfo = startInfo,
+                EnableRaisingEvents = true
+            };
+
+            var stdout = new System.Text.StringBuilder();
+            var stderr = new System.Text.StringBuilder();
+
+            process.OutputDataReceived += (_, e) =>
+            {
+                if (e.Data == null)
+                    return;
+
+                stdout.AppendLine(e.Data);
+
+                _logger.LogInformation("yt-dlp stdout: {Line}", e.Data);
+            };
+
+            process.ErrorDataReceived += (_, e) =>
+            {
+                if (e.Data == null)
+                    return;
+
+                stderr.AppendLine(e.Data);
+
+                _logger.LogInformation("yt-dlp stderr: {Line}", e.Data);
+            };
+
+            process.Start();
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
             process.WaitForExit();
 
-            _logger.LogInformation("yt-dlp exited. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}", process.ExitCode, output, error);
+            var output = stdout.ToString();
+            var error = stderr.ToString();
+
+            _logger.LogInformation(
+                "yt-dlp exited. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}",
+                process.ExitCode,
+                output,
+                error
+            );
 
             if (process.ExitCode != 0)
                 throw new InvalidOperationException($"yt-dlp failed: {error}{output}");
@@ -180,6 +236,33 @@ namespace Sma5hMusic.GUI.Services
             {
                 _logger.LogWarning(e, "Could not delete temporary YouTube import directory {Directory}.", directory);
             }
+        }
+
+        public Task<bool> IsPlaylist(string url)
+        {
+            return Task.Run(() =>
+            {
+                ValidateYoutubeUrl(url);
+
+                if (!Uri.TryCreate(url, UriKind.Absolute, out var uri))
+                    return false;
+
+                if (uri.AbsolutePath.Equals("/playlist", StringComparison.OrdinalIgnoreCase))
+                    return true;
+
+                var query = uri.Query.TrimStart('?');
+
+                if (string.IsNullOrWhiteSpace(query))
+                    return false;
+
+                var parts = query.Split('&', StringSplitOptions.RemoveEmptyEntries);
+
+                return parts.Any(part =>
+                {
+                    var key = part.Split('=', 2)[0];
+                    return string.Equals(key, "list", StringComparison.OrdinalIgnoreCase);
+                });
+            });
         }
     }
 }

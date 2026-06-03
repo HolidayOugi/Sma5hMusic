@@ -484,23 +484,7 @@ namespace Sma5hMusic.GUI.ViewModels
         }
         #endregion
 
-        #region Data Operations
-        #region BGM Operations
-        public async Task AddNewBgmEntry(ModEntryViewModel managerMod)
-        {
-            if (managerMod?.MusicMod == null)
-            {
-                await _messageDialog.ShowError("Error", "The mod could not be found.");
-                return;
-            }
-
-            var results = await _fileDialog.OpenFileDialogAudioMultiple();
-            if (results.Length == 0)
-                return;
-
-            await ImportAudioFiles(managerMod, results);
-        }
-
+        #region YouTube Import
         public async Task AddNewYoutubeBgmEntry(ModEntryViewModel managerMod)
         {
             if (managerMod?.MusicMod == null)
@@ -530,9 +514,23 @@ namespace Sma5hMusic.GUI.ViewModels
             YoutubeDownloadResult download = null;
             try
             {
+                var isPlaylist = await _youtubeImportService.IsPlaylist(_vmYoutubeImport.Url);
+
+                if (isPlaylist)
+                {
+                    var confirm = await _messageDialog.ShowWarningConfirm(
+                        "Input is a playlist",
+                        "Input is a playlist. All songs will be downloaded and processed. Do you want to continue?"
+                    );
+
+                    if (!confirm)
+                        return;
+                }
+
                 IsLoading = true;
                 IsShowingDebug = true;
-                download = await _youtubeImportService.DownloadAudio(_vmYoutubeImport.Url);
+
+                download = await _youtubeImportService.DownloadAudio(_vmYoutubeImport.Url, isPlaylist);
             }
             catch (Exception e)
             {
@@ -547,13 +545,38 @@ namespace Sma5hMusic.GUI.ViewModels
 
             try
             {
-                await ImportAudioFiles(managerMod, new[] { download.Filename });
+                var files = download.Filenames?.Where(File.Exists).ToList() ?? new List<string>();
+
+                if (files.Count == 0 && File.Exists(download.Filename))
+                    files.Add(download.Filename);
+
+                await ImportAudioFiles(managerMod, files);
             }
             finally
             {
                 _youtubeImportService.CleanupDownload(download);
             }
         }
+
+        #endregion
+
+        #region BGM Operations
+        public async Task AddNewBgmEntry(ModEntryViewModel managerMod)
+        {
+            if (managerMod?.MusicMod == null)
+            {
+                await _messageDialog.ShowError("Error", "The mod could not be found.");
+                return;
+            }
+
+            var results = await _fileDialog.OpenFileDialogAudioMultiple();
+            if (results.Length == 0)
+                return;
+
+            await ImportAudioFiles(managerMod, results);
+        }
+
+
 
         private async Task ImportAudioFiles(ModEntryViewModel managerMod, IReadOnlyCollection<string> inputFiles)
         {
@@ -824,7 +847,6 @@ namespace Sma5hMusic.GUI.ViewModels
                 await _guiStateManager.PersistStageChanges();
             }
         }
-        #endregion
         #endregion
     }
 }

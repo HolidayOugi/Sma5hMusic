@@ -7,7 +7,8 @@ namespace Sma5hMusic.GUI.Interfaces
     {
         bool IsYtDlpConfigured();
         bool IsFfmpegConfigured();
-        Task<YoutubeDownloadResult> DownloadAudio(string url);
+        Task<bool> IsPlaylist(string url);
+        Task<YoutubeDownloadResult> DownloadAudio(string url, bool allowPlaylist = false);
         void CleanupDownload(YoutubeDownloadResult download);
     }
 }
