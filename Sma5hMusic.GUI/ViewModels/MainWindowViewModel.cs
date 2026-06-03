@@ -393,7 +393,7 @@ namespace Sma5hMusic.GUI.ViewModels
                         await _messageDialog.ShowInformation("Game version not found", $"The version of your game could not be identified.\r\nIt might be that you are using a version that is unsupported or that your game files are customized.\r\nThis is known to cause some issues, such as silent files or wrong text information.\r\nBefore asking for support please make sure that the proper version of the files is recognized.");
                     }, DispatcherPriority.Background);
                 }
-                Title = $"Sma5hMusic (CSK Mod) - GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")} | Game v{_guiStateManager.GameVersion}";
+                Title = $"Sma5hMusic Extra - GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")} | Game v{_guiStateManager.GameVersion}";
 
                 IsLoading = false;
             }, (o) =>
@@ -409,7 +409,7 @@ namespace Sma5hMusic.GUI.ViewModels
                 $"Sma5hMusic - GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")} by deinonychus71\r\n" +
                 $"Mod Sma5hMusic - v{MusicConstants.VersionSma5hMusic} by deinonychus71\r\n" +
                 $"Mod Sma5hMusicOverride - v{MusicConstants.VersionSma5hMusicOverride} by deinonychus71\r\n" +
-                $"CSK Mod by HolidayOugi\r\n" +
+                $"Extra Features by HolidayOugi\r\n" +
                 $"Game - v{_guiStateManager.GameVersion}\r\n" +
                 "https://github.com/Deinonychus71/Sma5hMusic \r\n\r\n" +
                 "Research: soneek\r\n" +
