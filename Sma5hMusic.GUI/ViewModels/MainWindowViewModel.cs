@@ -120,7 +120,7 @@ namespace Sma5hMusic.GUI.ViewModels
             IsLoading = true;
 
             _logger.LogInformation($"GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")} | Game v{_guiStateManager.GameVersion}");
-            Title = $"Sma5hMusic (CSK Mod) - GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")}";
+            Title = $"Sma5hMusic Extra - GUI v{Constants.GUIVersion}{(!Constants.IsStable ? "b" : "")}";
 
             //Set values
             IsAdvanced = appSettings.CurrentValue.Sma5hMusicGUI.Advanced;

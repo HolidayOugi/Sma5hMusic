@@ -1,4 +1,4 @@
-## Sma5hMusic (CSK Mod)
+## Sma5hMusic Extra
 
 This is a fork of Sma5shMusic by Deinonychus71 that adds extra functionality to the original executable.
 
