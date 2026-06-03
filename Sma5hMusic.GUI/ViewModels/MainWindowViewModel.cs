@@ -21,6 +21,7 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
+using System.Threading;
 using VGMMusic;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
@@ -495,23 +496,42 @@ namespace Sma5hMusic.GUI.ViewModels
 
             if (!_youtubeImportService.IsYtDlpConfigured())
             {
-                await _messageDialog.ShowError("yt-dlp is not configured", "Set the path to yt-dlp.exe in Global Settings before importing songs from YouTube.");
+                await _messageDialog.ShowError(
+                    "yt-dlp is not configured",
+                    "Set the path to yt-dlp.exe in Global Settings before importing songs from YouTube."
+                );
                 return;
             }
 
             if (!_youtubeImportService.IsFfmpegConfigured())
             {
-                await _messageDialog.ShowError("ffmpeg is not configured", "Set the path to ffmpeg.exe in Global Settings before importing songs from YouTube.");
+                await _messageDialog.ShowError(
+                    "ffmpeg is not configured",
+                    "Set the path to ffmpeg.exe in Global Settings before importing songs from YouTube."
+                );
                 return;
             }
 
             _vmYoutubeImport.Reset();
-            var modalYoutubeImport = new YoutubeImportModalWindow() { DataContext = _vmYoutubeImport };
+
+            var modalYoutubeImport = new YoutubeImportModalWindow
+            {
+                DataContext = _vmYoutubeImport
+            };
+
             var result = await modalYoutubeImport.ShowDialog<YoutubeImportModalWindow>(_rootDialog.Window);
+
             if (result == null)
                 return;
 
             YoutubeDownloadResult download = null;
+            YoutubeDownloadProgressModalWindow progressWindow = null;
+            YoutubeDownloadProgressModalWindowViewModel progressVm = null;
+            Task progressDialogTask = null;
+
+            using var cancellationTokenSource = new CancellationTokenSource();
+            var userCancelled = false;
+
             try
             {
                 var isPlaylist = await _youtubeImportService.IsPlaylist(_vmYoutubeImport.Url);
@@ -527,10 +547,56 @@ namespace Sma5hMusic.GUI.ViewModels
                         return;
                 }
 
-                IsLoading = true;
-                IsShowingDebug = true;
+                var totalSongs = isPlaylist
+                    ? await _youtubeImportService.GetPlaylistItemCount(
+                        _vmYoutubeImport.Url,
+                        cancellationTokenSource.Token)
+                    : 1;
 
-                download = await _youtubeImportService.DownloadAudio(_vmYoutubeImport.Url, isPlaylist);
+                progressVm = new YoutubeDownloadProgressModalWindowViewModel();
+                progressVm.SetProgress(0, totalSongs);
+
+                progressWindow = new YoutubeDownloadProgressModalWindow
+                {
+                    DataContext = progressVm,
+                    Width = 420,
+                    Height = 170,
+                    MinWidth = 420,
+                    MinHeight = 170,
+                    MaxWidth = 420,
+                    MaxHeight = 170,
+                    CanResize = false,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+
+                progressWindow.Closing += (sender, args) =>
+                {
+                    if (!cancellationTokenSource.IsCancellationRequested)
+                    {
+                        userCancelled = true;
+                        cancellationTokenSource.Cancel();
+                    }
+                };
+
+                progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
+
+                download = await _youtubeImportService.DownloadAudio(
+                    _vmYoutubeImport.Url,
+                    isPlaylist,
+                    totalSongs,
+                    (current, total) =>
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            progressVm.SetProgress(current, total);
+                        });
+                    },
+                    cancellationTokenSource.Token
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                userCancelled = true;
             }
             catch (Exception e)
             {
@@ -539,16 +605,53 @@ namespace Sma5hMusic.GUI.ViewModels
             }
             finally
             {
-                IsLoading = false;
-                IsShowingDebug = false;
+                if (progressWindow != null)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        if (progressWindow.IsVisible)
+                            progressWindow.Close();
+                    });
+                }
+
+                if (progressDialogTask != null)
+                    await progressDialogTask;
+
+                if (userCancelled)
+                {
+                    _youtubeImportService.CleanupDownload(download);
+                }
             }
+
+            if (userCancelled)
+            {
+                await _messageDialog.ShowInformation(
+                    "YouTube import cancelled",
+                    "The YouTube download was cancelled."
+                );
+                return;
+            }
+
+            if (download == null)
+                return;
 
             try
             {
-                var files = download.Filenames?.Where(File.Exists).ToList() ?? new List<string>();
+                var files = download.Filenames?
+                    .Where(File.Exists)
+                    .ToList() ?? new List<string>();
 
                 if (files.Count == 0 && File.Exists(download.Filename))
                     files.Add(download.Filename);
+
+                if (files.Count == 0)
+                {
+                    await _messageDialog.ShowError(
+                        "YouTube import failed",
+                        "The download completed, but no audio files were found."
+                    );
+                    return;
+                }
 
                 await ImportAudioFiles(managerMod, files);
             }

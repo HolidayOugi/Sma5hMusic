@@ -4,6 +4,7 @@ using Sma5h.Mods.Music;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Models;
 using System;
+using System.Threading;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -35,14 +36,22 @@ namespace Sma5hMusic.GUI.Services
         }
 
 
-        public async Task<YoutubeDownloadResult> DownloadAudio(string url, bool allowPlaylist = false)
+        public async Task<YoutubeDownloadResult> DownloadAudio(
+            string url,
+            bool allowPlaylist = false,
+            int playlistTotal = 0,
+            Action<int, int> onProgress = null,
+            CancellationToken cancellationToken = default)
         {
             return await Task.Run(() =>
             {
+                cancellationToken.ThrowIfCancellationRequested();
+
                 ValidateYoutubeUrl(url);
 
                 var ytexecutable = _config.CurrentValue.YtDlpPath;
                 var ffmpegExecutable = _config.CurrentValue.FfmpegPath;
+
                 if (string.IsNullOrWhiteSpace(ytexecutable) || !File.Exists(ytexecutable))
                     throw new FileNotFoundException("yt-dlp.exe is not configured. Set its path in Global Settings.", ytexecutable);
 
@@ -56,8 +65,12 @@ namespace Sma5hMusic.GUI.Services
                 try
                 {
                     var outputTemplate = Path.Combine(tempDirectory, "%(title)s [%(id)s].%(ext)s");
+
                     var output = RunYtDlp(
                         ytexecutable,
+                        playlistTotal,
+                        onProgress,
+                        cancellationToken,
                         allowPlaylist ? "--yes-playlist" : "--no-playlist",
                         "--no-progress",
                         "--format", "bestaudio/best",
@@ -70,6 +83,8 @@ namespace Sma5hMusic.GUI.Services
                         "--output", outputTemplate,
                         url
                     );
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     var filenames = output
                         .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
@@ -89,12 +104,6 @@ namespace Sma5hMusic.GUI.Services
                     if (filenames.Count == 0)
                         throw new InvalidOperationException("yt-dlp completed, but the downloaded audio files could not be found.");
 
-                    _logger.LogInformation(
-                        "YouTube audio download completed. Url={Url}, Files={Files}.",
-                        url,
-                        string.Join(", ", filenames)
-                    );
-
                     return new YoutubeDownloadResult
                     {
                         Filename = filenames[0],
@@ -107,7 +116,7 @@ namespace Sma5hMusic.GUI.Services
                     DeleteTempDirectory(tempDirectory);
                     throw;
                 }
-            });
+            }, cancellationToken);
         }
 
         public void CleanupDownload(YoutubeDownloadResult download)
@@ -118,7 +127,12 @@ namespace Sma5hMusic.GUI.Services
             DeleteTempDirectory(download.TempDirectory);
         }
 
-        private string RunYtDlp(string executable, params string[] arguments)
+        private string RunYtDlp(
+            string executable,
+            int playlistTotal,
+            Action<int, int> onProgress,
+            CancellationToken cancellationToken,
+            params string[] arguments)
         {
             _logger.LogInformation(
                 "Running yt-dlp: {Executable} {Arguments}",
@@ -146,33 +160,59 @@ namespace Sma5hMusic.GUI.Services
 
             var stdout = new System.Text.StringBuilder();
             var stderr = new System.Text.StringBuilder();
+            var downloadedCount = 0;
 
             process.OutputDataReceived += (_, e) =>
             {
-                if (e.Data == null)
+                if (string.IsNullOrWhiteSpace(e.Data))
                     return;
 
                 stdout.AppendLine(e.Data);
 
-                _logger.LogInformation("yt-dlp stdout: {Line}", e.Data);
+                var line = e.Data.Trim().Trim('"');
+                _logger.LogInformation("yt-dlp stdout: {Line}", line);
+
+                if (File.Exists(line))
+                {
+                    downloadedCount++;
+                    onProgress?.Invoke(downloadedCount, playlistTotal);
+                }
             };
 
             process.ErrorDataReceived += (_, e) =>
             {
-                if (e.Data == null)
+                if (string.IsNullOrWhiteSpace(e.Data))
                     return;
 
                 stderr.AppendLine(e.Data);
-
                 _logger.LogInformation("yt-dlp stderr: {Line}", e.Data);
             };
 
             process.Start();
 
+            using var cancellationRegistration = cancellationToken.Register(() =>
+            {
+                try
+                {
+                    if (!process.HasExited)
+                    {
+                        _logger.LogInformation("Cancellation requested. Killing yt-dlp process...");
+                        process.Kill(true);
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogWarning(e, "Could not kill yt-dlp process.");
+                }
+            });
+
             process.BeginOutputReadLine();
             process.BeginErrorReadLine();
 
             process.WaitForExit();
+
+            if (cancellationToken.IsCancellationRequested)
+                throw new OperationCanceledException(cancellationToken);
 
             var output = stdout.ToString();
             var error = stderr.ToString();
@@ -263,6 +303,36 @@ namespace Sma5hMusic.GUI.Services
                     return string.Equals(key, "list", StringComparison.OrdinalIgnoreCase);
                 });
             });
+        }
+
+        public Task<int> GetPlaylistItemCount(string url, CancellationToken cancellationToken = default)
+        {
+            return Task.Run(() =>
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                ValidateYoutubeUrl(url);
+
+                var ytexecutable = _config.CurrentValue.YtDlpPath;
+
+                if (string.IsNullOrWhiteSpace(ytexecutable) || !File.Exists(ytexecutable))
+                    throw new FileNotFoundException("yt-dlp.exe is not configured. Set its path in Global Settings.", ytexecutable);
+
+                var output = RunYtDlp(
+                    ytexecutable,
+                    0,
+                    null,
+                    cancellationToken,
+                    "--yes-playlist",
+                    "--flat-playlist",
+                    "--print", "%(id)s",
+                    url
+                );
+
+                return output
+                    .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Length;
+            }, cancellationToken);
         }
     }
 }

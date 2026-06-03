@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sma5hMusic.GUI.Views.YoutubeDownloadProgressModalWindow"
+        Width="420"
+        Height="170"
+        MinWidth="420"
+        MinHeight="170"
+        MaxWidth="420"
+        MaxHeight="170"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="YouTube download">
+
+  <Grid Margin="20" RowDefinitions="Auto,16,Auto,12,Auto">
+    <TextBlock Grid.Row="0"
+               Text="{Binding Message}"
+               FontSize="16"
+               HorizontalAlignment="Center"
+               TextAlignment="Center"
+               TextWrapping="Wrap" />
+
+    <ProgressBar Grid.Row="2"
+                 Minimum="0"
+                 Maximum="{Binding Total}"
+                 Value="{Binding Current}"
+                 IsIndeterminate="{Binding IsIndeterminate}"
+                 Height="18" />
+
+    <TextBlock Grid.Row="4"
+               Text="Please wait. Do not close the application."
+               HorizontalAlignment="Center"
+               FontSize="12"
+               Opacity="0.7" />
+  </Grid>
+</Window>
