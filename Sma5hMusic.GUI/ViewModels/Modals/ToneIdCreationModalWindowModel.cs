@@ -209,7 +209,16 @@ namespace Sma5hMusic.GUI.ViewModels
                 "Loop end ms cannot be greater than the total length.");
 
             var canExecute = this.WhenAnyValue(x => x.ValidationContext.IsValid);
-            var canPreview = this.WhenAnyValue(x => x.IsAudioImport, x => x.ValidationContext.IsValid, (isAudioImport, isValid) => isAudioImport && isValid);
+            var canPreview = this.WhenAnyValue(
+                x => x.IsAudioImport,
+                x => x.LoopStartSample,
+                x => x.LoopEndSample,
+                x => x.TotalSamples,
+                (isAudioImport, loopStartSample, loopEndSample, totalSamples) =>
+                    isAudioImport &&
+                    loopEndSample > 0 &&
+                    loopStartSample <= loopEndSample &&
+                    loopEndSample <= totalSamples);
             var canCalculateAutoLoops = this.WhenAnyValue(x => x.IsAudioImport, x => x.IsCalculatingAutoLoops, (isAudioImport, isCalculating) => isAudioImport && !isCalculating);
             ActionCancel = ReactiveCommand.Create<Window>(Cancel);
             ActionCreate = ReactiveCommand.Create<Window>(Select, canExecute);
