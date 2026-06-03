@@ -55,8 +55,9 @@ namespace Sma5hMusic.GUI.Services
 
                 try
                 {
-                    var outputTemplate = Path.Combine(tempDirectory, "%(title)s.%(ext)s");
-                    var output = RunYtDlp(ytexecutable,
+                    var outputTemplate = Path.Combine(tempDirectory, "%(title)s [%(id)s].%(ext)s");
+                    var output = RunYtDlp(
+                        ytexecutable,
                         "--no-playlist",
                         "--no-progress",
                         "--format", "bestaudio/best",
@@ -64,9 +65,11 @@ namespace Sma5hMusic.GUI.Services
                         "--ffmpeg-location", ffmpegExecutable,
                         "--audio-format", "mp3",
                         "--audio-quality", "0",
+                        "--restrict-filenames",
                         "--print", "after_move:filepath",
                         "--output", outputTemplate,
-                        url);
+                        url
+                    );
 
                     var filename = output
                         .Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries)
