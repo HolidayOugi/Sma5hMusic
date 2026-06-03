@@ -162,7 +162,7 @@ namespace Sma5hMusic.GUI.Services
             var stderr = new System.Text.StringBuilder();
             var downloadedCount = 0;
 
-            process.OutputDataReceived += (_, e) =>
+            process.OutputDataReceived += (sender, e) =>
             {
                 if (string.IsNullOrWhiteSpace(e.Data))
                     return;
@@ -179,7 +179,7 @@ namespace Sma5hMusic.GUI.Services
                 }
             };
 
-            process.ErrorDataReceived += (_, e) =>
+            process.ErrorDataReceived += (sender, e) =>
             {
                 if (string.IsNullOrWhiteSpace(e.Data))
                     return;

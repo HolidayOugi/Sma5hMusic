@@ -12,21 +12,36 @@ namespace Sma5hMusic.GUI.ViewModels
     {
         public ReactiveCommand<Window, Unit> ActionCancel { get; }
         public ReactiveCommand<Window, Unit> ActionImport { get; }
+        public ReactiveCommand<Window, Unit> ActionImportFromTextFile { get; }
 
         [Reactive]
         public string Url { get; set; }
+
+        [Reactive]
+        public bool ImportFromTextFile { get; set; }
 
         public YoutubeImportModalWindowViewModel()
         {
             this.ValidationRule(p => p.Url, IsYoutubeUrl, "Enter a valid YouTube URL.");
 
             ActionCancel = ReactiveCommand.Create<Window>(p => p.Close());
-            ActionImport = ReactiveCommand.Create<Window>(p => p.Close(p), this.WhenAnyValue(p => p.ValidationContext.IsValid));
+
+            ActionImport = ReactiveCommand.Create<Window>(
+                p => p.Close(p),
+                this.WhenAnyValue(p => p.ValidationContext.IsValid)
+            );
+
+            ActionImportFromTextFile = ReactiveCommand.Create<Window>(p =>
+            {
+                ImportFromTextFile = true;
+                p.Close(p);
+            });
         }
 
         public void Reset()
         {
             Url = string.Empty;
+            ImportFromTextFile = false;
         }
 
         private static bool IsYoutubeUrl(string url)

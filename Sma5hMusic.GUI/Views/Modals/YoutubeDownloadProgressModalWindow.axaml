@@ -9,7 +9,7 @@
         MaxHeight="170"
         CanResize="False"
         WindowStartupLocation="CenterOwner"
-        Title="YouTube download">
+        Title="YouTube Download">
 
   <Grid Margin="20" RowDefinitions="Auto,16,Auto,12,Auto">
     <TextBlock Grid.Row="0"
