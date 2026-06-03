@@ -22,11 +22,18 @@ namespace Sma5hMusic.GUI.Services
             _logger = logger;
         }
 
-        public bool IsConfigured()
+        public bool IsYtDlpConfigured()
         {
             var executable = _config.CurrentValue.YtDlpPath;
             return !string.IsNullOrWhiteSpace(executable) && File.Exists(executable);
         }
+
+        public bool IsFfmpegConfigured()
+        {
+            var executable = _config.CurrentValue.FfmpegPath;
+            return !string.IsNullOrWhiteSpace(executable) && File.Exists(executable);
+        }
+
 
         public async Task<YoutubeDownloadResult> DownloadAudio(string url)
         {
@@ -34,9 +41,13 @@ namespace Sma5hMusic.GUI.Services
             {
                 ValidateYoutubeUrl(url);
 
-                var executable = _config.CurrentValue.YtDlpPath;
-                if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable))
-                    throw new FileNotFoundException("yt-dlp.exe is not configured. Set its path in Global Settings.", executable);
+                var ytexecutable = _config.CurrentValue.YtDlpPath;
+                var ffmpegExecutable = _config.CurrentValue.FfmpegPath;
+                if (string.IsNullOrWhiteSpace(ytexecutable) || !File.Exists(ytexecutable))
+                    throw new FileNotFoundException("yt-dlp.exe is not configured. Set its path in Global Settings.", ytexecutable);
+
+                if (string.IsNullOrWhiteSpace(ffmpegExecutable) || !File.Exists(ffmpegExecutable))
+                    throw new FileNotFoundException("ffmpeg.exe is not configured. Set its path in Global Settings.", ffmpegExecutable);
 
                 var tempRoot = GetTempRoot();
                 var tempDirectory = Path.Combine(tempRoot, Guid.NewGuid().ToString("N"));
@@ -45,11 +56,12 @@ namespace Sma5hMusic.GUI.Services
                 try
                 {
                     var outputTemplate = Path.Combine(tempDirectory, "%(title)s.%(ext)s");
-                    var output = RunYtDlp(executable,
+                    var output = RunYtDlp(ytexecutable,
                         "--no-playlist",
                         "--no-progress",
                         "--format", "bestaudio/best",
                         "--extract-audio",
+                        "--ffmpeg-location", ffmpegExecutable,
                         "--audio-format", "mp3",
                         "--audio-quality", "0",
                         "--print", "after_move:filepath",

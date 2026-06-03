@@ -42,6 +42,8 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public string YtDlpPath { get; set; }
         [Reactive]
+        public string FfmpegPath { get; set; }
+        [Reactive]
         public string TempPath { get; set; }
         [Reactive]
         public string ResourcesPath { get; set; }

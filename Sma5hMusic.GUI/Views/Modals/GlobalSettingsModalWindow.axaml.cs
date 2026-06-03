@@ -18,6 +18,7 @@ namespace Sma5hMusic.GUI.Views
         private PropertyFolderPickupField ModOverridePathValidation => this.FindControl<PropertyFolderPickupField>("ModOverridePath");
         private PropertyFolderPickupField ToolsPathValidation => this.FindControl<PropertyFolderPickupField>("ToolsPath");
         private PropertyFolderPickupField YtDlpPathValidation => this.FindControl<PropertyFolderPickupField>("YtDlpPath");
+        private PropertyFolderPickupField FfmpegPathValidation => this.FindControl<PropertyFolderPickupField>("FfmpegPath");
 
         public GlobalSettingsModalWindow()
         {
@@ -42,6 +43,8 @@ namespace Sma5hMusic.GUI.Views
                 this.BindValidation(ViewModel, vm => vm.SelectedItem.ToolsPath, view => view.ToolsPathValidation.ValidationError)
                 .DisposeWith(disposables);
                 this.BindValidation(ViewModel, vm => vm.SelectedItem.YtDlpPath, view => view.YtDlpPathValidation.ValidationError)
+                .DisposeWith(disposables);
+                this.BindValidation(ViewModel, vm => vm.SelectedItem.FfmpegPath, view => view.FfmpegPathValidation.ValidationError)
                 .DisposeWith(disposables);
             });
         }

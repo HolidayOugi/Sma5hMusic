@@ -509,9 +509,15 @@ namespace Sma5hMusic.GUI.ViewModels
                 return;
             }
 
-            if (!_youtubeImportService.IsConfigured())
+            if (!_youtubeImportService.IsYtDlpConfigured())
             {
                 await _messageDialog.ShowError("yt-dlp is not configured", "Set the path to yt-dlp.exe in Global Settings before importing songs from YouTube.");
+                return;
+            }
+
+            if (!_youtubeImportService.IsFfmpegConfigured())
+            {
+                await _messageDialog.ShowError("ffmpeg is not configured", "Set the path to ffmpeg.exe in Global Settings before importing songs from YouTube.");
                 return;
             }
 

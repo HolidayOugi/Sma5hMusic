@@ -100,6 +100,10 @@ namespace Sma5hMusic.GUI.ViewModels
             this.ValidationRule(p => p.SelectedItem.YtDlpPath,
                 p => string.IsNullOrWhiteSpace(p) || File.Exists(p),
                 "This file does not exist.");
+
+            this.ValidationRule(p => p.SelectedItem.FfmpegPath,
+                p => string.IsNullOrWhiteSpace(p) || File.Exists(p),
+                "This file does not exist.");
         }
 
         public async Task OnWipeAudioCache()
@@ -109,9 +113,12 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public async Task OnChoosePath(string param)
         {
-            var result = param == "YtDlpPath"
-                ? await _fileDialog.OpenFileDialogYtDlp()
-                : await _fileDialog.OpenFolderDialog();
+            var result = param switch
+            {
+                "YtDlpPath" => await _fileDialog.OpenFileDialogYtDlp(),
+                "FfmpegPath" => await _fileDialog.OpenFileDialogFfmpeg(),
+                _ => await _fileDialog.OpenFolderDialog()
+            };
             if (!string.IsNullOrEmpty(result))
             {
                 switch (param)
@@ -136,6 +143,9 @@ namespace Sma5hMusic.GUI.ViewModels
                         break;
                     case "YtDlpPath":
                         SelectedItem.YtDlpPath = result;
+                        break;
+                    case "FfmpegPath":
+                        SelectedItem.FfmpegPath = result;
                         break;
                     case "CachePath":
                         SelectedItem.CachePath = result;

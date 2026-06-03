@@ -5,7 +5,8 @@ namespace Sma5hMusic.GUI.Interfaces
 {
     public interface IYoutubeImportService
     {
-        bool IsConfigured();
+        bool IsYtDlpConfigured();
+        bool IsFfmpegConfigured();
         Task<YoutubeDownloadResult> DownloadAudio(string url);
         void CleanupDownload(YoutubeDownloadResult download);
     }

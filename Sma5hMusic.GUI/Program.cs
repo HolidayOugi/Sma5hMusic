@@ -123,6 +123,7 @@ namespace Sma5hMusic.GUI
                 { "BackupPath", "Backup" },
                 { "ToolsPath", "Tools" },
                 { "YtDlpPath", "" },
+                { "FfmpegPath", "" },
                 { "TempPath", "Temp" },
                 { "LogPath", "Log" },
                 { "SkipOutputPathCleanupConfirmation", "false" },
