@@ -90,6 +90,7 @@ namespace Sma5hMusic.GUI
             services.AddSingleton<ISeriesIconService, SeriesIconService>();
             services.AddSingleton<IVGMMusicPlayer, VGMMusicPlayer>();
             services.AddSingleton<IAudioImportService, AudioImportService>();
+            services.AddSingleton<INus3AudioBatchNormalizationService, Nus3AudioBatchNormalizationService>();
             services.AddSingleton<IYoutubeImportService, YoutubeImportService>();
             services.AddSingleton<IFileDialog, FileDialog>();
             services.AddSingleton<IMessageDialog, MessageDialog>();

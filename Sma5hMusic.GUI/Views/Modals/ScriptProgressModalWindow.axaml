@@ -1,0 +1,35 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sma5hMusic.GUI.Views.ScriptProgressModalWindow"
+        Width="460"
+        Height="180"
+        MinWidth="460"
+        MinHeight="180"
+        MaxWidth="460"
+        MaxHeight="180"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="Script Progress">
+
+  <Grid Margin="20" RowDefinitions="Auto,16,Auto,12,Auto">
+    <TextBlock Grid.Row="0"
+               Text="{Binding Message}"
+               FontSize="16"
+               HorizontalAlignment="Center"
+               TextAlignment="Center"
+               TextWrapping="Wrap" />
+
+    <ProgressBar Grid.Row="2"
+                 Minimum="0"
+                 Maximum="{Binding Total}"
+                 Value="{Binding Current}"
+                 IsIndeterminate="{Binding IsIndeterminate}"
+                 Height="18" />
+
+    <TextBlock Grid.Row="4"
+               Text="{Binding Footer}"
+               HorizontalAlignment="Center"
+               FontSize="12"
+               Opacity="0.7" />
+  </Grid>
+</Window>

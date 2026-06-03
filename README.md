@@ -1,59 +1,102 @@
-## Sma5hMusic Extra
+# Sma5hMusic Extra
 
-This is a fork of Sma5shMusic by Deinonychus71 that adds extra functionality to the original executable.
+This is a fork of [Sma5shMusic by Deinonychus71](https://github.com/Deinonychus71/Sma5hMusic) that adds extra functionality to the original executable.
 
-This is experimental, please make backups of your jsons and music files before using. While the core functionality has not been touched, this has yet to be tested extensively.
+> [!WARNING]
+> The various new features are experimental and have not yet been tested extensively. Please make backups of your JSONs and music files before using them.
 
-To run the CSK music packs in-game you need to have [ARCropolis](https://github.com/raytwo/arcropolis) and the [CSK Collection](https://gamebanana.com/mods/499008) installed on your system.
+## CSK Pack Building
 
-The following changes have been made
-
-* Building of CSK compatible Music Packs. Both a single compacted pack and multiple modular packs are available as options. The user can also choose to build only select series.
-* Icon support. For each series, an icon can be chosen from either a PNG file or a BNTX file. In the former case, the PNG will be resized and converted automatically. For the best results, please use a transparent PNG with a white icon inside. The series icons will then be automatically copied to the Output folder at build time.
-* If not assigned manually to a playlist, automatically adds all songs from an added Series to a playlist, to ensure they always show up in-game.
-* Builds are now saved to a subfolder of the Output directory
-* Fixes bug where certain Nus3bank IDs values may cause songs to not play in-game (tentative, needs extensive testing)
+> [!NOTE]
+> To run the CSK Music Packs in-game both [ARCropolis](https://github.com/raytwo/arcropolis) and the [CSK Collection](https://gamebanana.com/mods/499008) have to be installed on your system.
 
 
-Below the original README:
+**CSK-compatible Music Packs** can be now be built. The software offers two options:
 
+* **Single Pack**: A single Music Pack comprised of all the Mods and Series currently loaded.
+* **Modular Packs**: Multiple Modular Music Packs for each Series and Mod. The user can choose which Series to generate. 
 
-## Sma5hMusic GUI - What is it?
-Sma5h.CLI and Sma5hMusic are a series of tools to import additional tracks to Smash Ultimate.
-This tool is highly experimental and may not always work as expected.
-* For detailed setup steps: https://github.com/Deinonychus71/Sma5hMusic/wiki
-* **Always keep backups of your files and savegames.**
-* **This mod is not safe online!**
-* Suggestions are welcome. Please create an issue for it.
+![Series Selection](https://elixi.re/i/bfyok.png)
+
+> [!TIP]
+> When using Modular Packs, if one or more Vanilla Series did not contain any songs during the generation, an optional Series Order pack is generated. If loaded, it ensures that each Series is in its correct order in the Music Select / Sound Test screen.
+
+## Icon Selection and Conversion
+
+**Icons** can now be assigned to Series directly from the Create Series / Edit Series menu. The Software accepts PNGs or BNTXs as input and assigns them to a Series, converting them if needed. The Icons are automatically copied to the output build.
+
+![Icon Selection](https://elixi.re/i/t0jjq.png)
+
+> [!TIP]
+> To obtain the best results, please choose a square icon with a transparent background and an all-white texture.
+
+## Importing of Audio Files
+
+**Standard Audio files** (.mp3, .flac, .wav, .ogg, .m4a) can now be loaded directly into the software without prior conversion.
+
+When loaded, the user is prompted to input the loop points for the given song. They can then be previewed by playing the track itself slightly before and after each loop point. The audio file is finally converted using the chosen loop points.
+
+![Loop Point Selection](https://elixi.re/i/qj2ap.png)
+
+### Automatic Loop Detection
+
+> [!NOTE]
+> Requires the installation of [PyMusicLooper](https://github.com/arkrow/PyMusicLooper) and for it to be accessible in PATH.
+
+The software can also automatically detect potential loop points, making it easy to preview and choose from the suggested loops.
+
+![PyMusicLooper](https://elixi.re/i/b8l0c.png)
+
+## Normalization of Songs
+
+> [!NOTE]
+> Requires the download of [FFmpeg](https://www.ffmpeg.org/) and for its path to be set in the Global Settings.
+
+Songs can now be **normalized** to a certain LUFS normalization level. This can be selected in two ways.
+
+* **At Import Time**: when adding a song, either already converted or not, a checkbox can be checked for Normalization.
+* **Batch Normalization**: in the Tools -> Scripts submenu, a new option can be chosen to normalize all of the songs already added to the software.
+
+![Normalization](https://elixi.re/i/xat1c.png)
+
+> [!TIP]
+> The LUFS Normalization value can be set in the Global Settings.
+
+## Direct YouTube Download support
+
+> [!NOTE]
+> Requires the download of [FFmpeg](https://www.ffmpeg.org/) and [yt-dlp](https://github.com/yt-dlp/yt-dlp) and for their paths to be set in the Global Settings.
+
+Songs can now be directly downloaded from **YouTube** and added to the software in a single action.
+
+The songs can be imported either from their URL or from a text file containing all of the links, one per line.
+
+![YouTube](https://elixi.re/i/tuqzu.png)
+
+> [!TIP]
+> Playlists are also supported. The software notifies the user that all the songs from a given playlist will be downloaded.
+
+## Miscellaneous fixes and improvements
+
+* (*Should have*) fixed bug where songs would stop playing in-game due to their order in the global song list.
+* Packs now are output in a subfolder of the build folder.
+* If a song from custom Series was not manually added to a playlist, the software will automatically add it to the Battlefield playlist to ensure it shows up in-game.
 
 ## Thanks & Repos of the different tools
-1.  Research: soneek
-2.  Testing: Demonslayerx8, Segtendo
-3.  Icon: Segtendo
-4.  prcEditor: https://github.com/BenHall-7/paracobNET - BenHall-7
-5.  paramLabels: https://github.com/ultimate-research/param-labels - BenHall-7, jam1garner, Dr-HyperCake, Birdwards, ThatNintendoNerd, ScanMountGoat, Meshima, Blazingflare, TheSmartKid, jugeeya, Demonslayerx8
-6.  msbtEditor: https://github.com/IcySon55/3DLandMSBTeditor - IcySon55, exelix11
-7.  nus3audio: https://github.com/jam1garner/nus3audio-rs - jam1garner
-8.  bgm-property: https://github.com/jam1garner/smash-bgm-property - jam1garner
-9.  VGAudio: https://github.com/Thealexbarney/VGAudio - Thealexbarney, soneek, jam1garner, devlead, Raytwo, nnn1590
-10.  vgmstream: https://github.com/vgmstream/vgmstream - bnnm, kode54, NicknineTheEagle, bxaimc, Thealexbarney
+1.  Original Code and Author: Deinonychus71
+2.  Research: soneek
+3.  Testing: Demonslayerx8, Segtendo
+4.  Icon: Segtendo
+5.  prcEditor: https://github.com/BenHall-7/paracobNET - BenHall-7
+6.  paramLabels: https://github.com/ultimate-research/param-labels - BenHall-7, jam1garner, Dr-HyperCake, Birdwards, ThatNintendoNerd, ScanMountGoat, Meshima, Blazingflare, TheSmartKid, jugeeya, Demonslayerx8
+7.  msbtEditor: https://github.com/IcySon55/3DLandMSBTeditor - IcySon55, exelix11
+8.  nus3audio: https://github.com/jam1garner/nus3audio-rs - jam1garner
+9.  bgm-property: https://github.com/jam1garner/smash-bgm-property - jam1garner
+10.  VGAudio: https://github.com/Thealexbarney/VGAudio - Thealexbarney, soneek, jam1garner, devlead, Raytwo, nnn1590
+11.  vgmstream: https://github.com/vgmstream/vgmstream - bnnm, kode54, NicknineTheEagle, bxaimc, Thealexbarney
 All contributors: https://github.com/vgmstream/vgmstream/graphs/contributors
-11. SoX: https://sox.sourceforge.net/ - SoX contributors
-12. PyMusicLooper: https://github.com/arkrow/PyMusicLooper - arkrow and contributors
-13. CrossArc: https://github.com/Ploaj/ArcCross Ploaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG
-14. BCnEncoder.NET: https://github.com/Nominom/BCnEncoder.NET - Nominom and contributors
-15. SkiaSharp: https://github.com/mono/SkiaSharp - Mono/SkiaSharp contributors
-
-## How to create an issue - bug ##
-1. Please do not create an issue if you're having trouble with the setup. I will not provide the resource files as this would be piracy. You need to extract them yourself from your own backup.
-2. Please check the wiki for troubleshooting, it may contain an answer to your question already. I will try to keep it updated.
-3. At the very least you should make sure you are using latest with unmodified files and no other mods enabled as first troubleshooting steps.
-4. I have limited time so issues such as 'it's not working please help' will be ignored / closed. 
-5. Please provide the following :
-- Version detected by the program (should be software latest and game latest)
-- Provide a sample of the log where the issue is found or a screenshot
-- Provide reproducible steps. (such as "I launched the software, did this, clicked there, and then this happened")
-- If relevant please provide the metadata_mod.json files or override json files (from /Mods) that you think might have an issue. If you're having issues to start the program you can link the appsettings.json (Root folder) file too.
-
-## How to create an issue - enhancements ##
-* Enhancement requests are welcome! But it may take a while for me to answer back on them.
+12. SoX: https://sox.sourceforge.net/ - SoX contributors
+13. PyMusicLooper: https://github.com/arkrow/PyMusicLooper - arkrow and contributors
+14. CrossArc: https://github.com/Ploaj/ArcCross Ploaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG
+15. yt-dlp: https://github.com/yt-dlp/yt-dlp - yt-dlp contributors
+16. FFmpeg: https://github.com/FFmpeg/FFmpeg - FFmpeg contributors

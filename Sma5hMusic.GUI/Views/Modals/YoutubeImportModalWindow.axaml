@@ -29,6 +29,7 @@
           x:Name="Url"
           Label="YouTube URL"
           Text="{Binding Url}"
+          ToolTip.Tip="Enter the URL of the YouTube video you want to import."
           IsRequired="True"/>
 
       <Button

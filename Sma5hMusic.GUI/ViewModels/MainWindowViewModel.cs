@@ -36,6 +36,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IMessageDialog _messageDialog;
         private readonly IFileDialog _fileDialog;
         private readonly IAudioImportService _audioImportService;
+        private readonly INus3AudioBatchNormalizationService _nus3AudioBatchNormalizationService;
         private readonly IYoutubeImportService _youtubeImportService;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
@@ -93,6 +94,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionOpenResourcesFolder { get; }
         public ReactiveCommand<Unit, Unit> ActionOpenLogsFolder { get; }
         public ReactiveCommand<Unit, Unit> ActionExportSongsCSV { get; }
+        public ReactiveCommand<Unit, Unit> ActionNormalizeNus3AudioFiles { get; }
         public ReactiveCommand<Unit, Unit> ActionFixUnknownValues { get; }
         public ReactiveCommand<Unit, Unit> ActionReorderSongsMod { get; }
         public ReactiveCommand<bool, Unit> ActionUpdateBgmSelector { get; }
@@ -101,13 +103,14 @@ namespace Sma5hMusic.GUI.ViewModels
 
 
         public MainWindowViewModel(IServiceProvider serviceProvider, IViewModelManager viewModelManager, IGUIStateManager guiStateManager, IMapper mapper, IVGMMusicPlayer musicPlayer,
-            IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, IYoutubeImportService youtubeImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
+               IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, INus3AudioBatchNormalizationService nus3AudioBatchNormalizationService, IYoutubeImportService youtubeImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
         {
             _viewModelManager = viewModelManager;
             _guiStateManager = guiStateManager;
             _musicPlayer = musicPlayer;
             _fileDialog = fileDialog;
             _audioImportService = audioImportService;
+            _nus3AudioBatchNormalizationService = nus3AudioBatchNormalizationService;
             _youtubeImportService = youtubeImportService;
             _buildDialog = buildDialog;
             _cskPackBuildService = cskPackBuildService;
@@ -220,6 +223,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionOpenResourcesFolder = ReactiveCommand.Create(() => _fileDialog.OpenFolder(_appSettings.CurrentValue.ResourcesPath));
             ActionOpenLogsFolder = ReactiveCommand.Create(() => _fileDialog.OpenFolder(_appSettings.CurrentValue.LogPath));
             ActionExportSongsCSV = ReactiveCommand.CreateFromTask(ExportSongsToCSV);
+            ActionNormalizeNus3AudioFiles = ReactiveCommand.CreateFromTask(NormalizeNus3AudioFiles);
             ActionFixUnknownValues = ReactiveCommand.CreateFromTask(FixUnknownValues);
             ActionReorderSongsMod = ReactiveCommand.CreateFromTask(ReorderSongsMod);
             ActionUpdateBgmSelector = ReactiveCommand.CreateFromTask<bool>((enabled) => UpdateBgmSelector(enabled));
@@ -463,6 +467,161 @@ namespace Sma5hMusic.GUI.ViewModels
                 if (await _devTools.ExportToCSV(result))
                     await _messageDialog.ShowError("Done", "The CSV export was completed.");
             }
+        }
+
+        public async Task NormalizeNus3AudioFiles()
+        {
+            if (!_audioImportService.IsFfmpegConfigured())
+            {
+                await _messageDialog.ShowError(
+                    "ffmpeg is not configured",
+                    "Set the path to ffmpeg.exe in Global Settings before normalizing NUS3AUDIO files."
+                );
+                return;
+            }
+
+            var musicModsPath = _appSettings.CurrentValue.Sma5hMusic.ModPath;
+            if (string.IsNullOrWhiteSpace(musicModsPath) || !Directory.Exists(musicModsPath))
+            {
+                await _messageDialog.ShowError(
+                    "NUS3AUDIO normalization failed",
+                    $"The MusicMods folder could not be found:\r\n{musicModsPath}"
+                );
+                return;
+            }
+
+            var files = _nus3AudioBatchNormalizationService.GetNus3AudioFiles(musicModsPath);
+            if (files.Count == 0)
+            {
+                await _messageDialog.ShowInformation(
+                    "NUS3AUDIO normalization",
+                    $"No .nus3audio files were found in:\r\n{musicModsPath}"
+                );
+                return;
+            }
+
+            var confirm = await _messageDialog.ShowWarningConfirm(
+                "Normalize NUS3AUDIO files?",
+                $"This will normalize {files.Count} .nus3audio file(s) found in MusicMods and overwrite them after successful normalization.\r\n\r\nPlease make sure you have a backup before continuing."
+            );
+
+            if (!confirm)
+                return;
+
+            ScriptProgressModalWindow progressWindow = null;
+            ScriptProgressModalWindowViewModel progressVm = null;
+            Task progressDialogTask = null;
+
+            using var cancellationTokenSource = new CancellationTokenSource();
+
+            var userCancelled = false;
+            var closingProgressWindowProgrammatically = false;
+            Nus3AudioBatchNormalizationResult result = null;
+
+            try
+            {
+                progressVm = new ScriptProgressModalWindowViewModel();
+                progressVm.SetPreparing("Preparing NUS3AUDIO normalization...");
+
+                progressWindow = new ScriptProgressModalWindow
+                {
+                    DataContext = progressVm,
+                    Title = "NUS3AUDIO Normalization",
+                    Width = 460,
+                    Height = 180,
+                    MinWidth = 460,
+                    MinHeight = 180,
+                    MaxWidth = 460,
+                    MaxHeight = 180,
+                    CanResize = false,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+
+                progressWindow.Closing += (sender, args) =>
+                {
+                    if (closingProgressWindowProgrammatically)
+                        return;
+
+                    if (!cancellationTokenSource.IsCancellationRequested)
+                    {
+                        userCancelled = true;
+                        cancellationTokenSource.Cancel();
+                    }
+                };
+
+                progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
+
+                result = await _nus3AudioBatchNormalizationService.NormalizeFiles(
+                    files,
+                    musicModsPath,
+                    (current, total, currentFile) =>
+                    {
+                        Dispatcher.UIThread.Post(() =>
+                        {
+                            progressVm.SetProgress(
+                                "Normalizing NUS3AUDIO files",
+                                currentFile,
+                                current,
+                                total
+                            );
+                        });
+                    },
+                    cancellationTokenSource.Token
+                );
+            }
+            catch (OperationCanceledException)
+            {
+                userCancelled = true;
+            }
+            catch (Exception e)
+            {
+                await _messageDialog.ShowError("NUS3AUDIO normalization failed", e.Message, e);
+                return;
+            }
+            finally
+            {
+                if (progressWindow != null)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(() =>
+                    {
+                        closingProgressWindowProgrammatically = true;
+
+                        if (progressWindow.IsVisible)
+                            progressWindow.Close();
+                    });
+                }
+
+                if (progressDialogTask != null)
+                    await progressDialogTask;
+            }
+
+            if (userCancelled)
+            {
+                await _messageDialog.ShowInformation(
+                    "NUS3AUDIO normalization cancelled",
+                    result == null
+                        ? "The operation was cancelled."
+                        : $"The operation was cancelled.\r\nNormalized files before cancellation: {result.NormalizedFiles}/{files.Count}."
+                );
+                return;
+            }
+
+            if (result == null)
+                return;
+
+            if (result.FailedFiles.Count > 0)
+            {
+                await _messageDialog.ShowError(
+                    "NUS3AUDIO normalization completed with errors",
+                    $"Normalized files: {result.NormalizedFiles}/{result.TotalFiles}\r\nFailed files: {result.FailedFiles.Count}\r\n\r\nCheck the logs for details."
+                );
+                return;
+            }
+
+            await _messageDialog.ShowInformation(
+                "NUS3AUDIO normalization complete",
+                $"Normalized files: {result.NormalizedFiles}/{result.TotalFiles}."
+            );
         }
 
         public async Task FixUnknownValues()

@@ -52,8 +52,12 @@
         </MenuItem>
         <Separator></Separator>
         <MenuItem Header="Scripts">
-          <MenuItem Header="Export Song Entries to CSV" Command="{Binding ActionExportSongsCSV}"></MenuItem>
-          <Separator></Separator>
+        <MenuItem Header="Export Song Entries to CSV" Command="{Binding ActionExportSongsCSV}"></MenuItem>
+        <Separator></Separator>
+        <MenuItem Header="Normalize Songs in all Mods"
+                  ToolTip.Tip="Normalizes every song in every mod."
+                  Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>
+        <Separator></Separator>
           <MenuItem Header="Enable Song Selector in all Stages" Command="{Binding ActionUpdateBgmSelector}">
             <MenuItem.CommandParameter>
               <sys:Boolean>True</sys:Boolean>
