@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sma5h.Mods.Music;
+using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Models;
 using System;
@@ -114,6 +115,7 @@ namespace Sma5hMusic.GUI.Services
                 catch
                 {
                     DeleteTempDirectory(tempDirectory);
+                    TempDirectoryHelper.DeleteIfEmpty(tempRoot);
                     throw;
                 }
             }, cancellationToken);
@@ -125,6 +127,7 @@ namespace Sma5hMusic.GUI.Services
                 return;
 
             DeleteTempDirectory(download.TempDirectory);
+            TempDirectoryHelper.DeleteIfEmpty(GetTempRoot());
         }
 
         private string RunYtDlp(

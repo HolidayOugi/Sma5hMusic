@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sma5h.Mods.Music;
+using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Models;
 using System;
@@ -117,6 +118,9 @@ namespace Sma5hMusic.GUI.Services
             finally
             {
                 DeleteTempDirectory(tempDirectory);
+                TempDirectoryHelper.DeleteIfEmpty(
+                    Path.Combine(_config.CurrentValue.TempPath, "Nus3AudioBatchNormalization")
+                );
             }
         }
 

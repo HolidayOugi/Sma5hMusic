@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sma5h.Mods.Music;
+using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Models;
 using System;
@@ -176,6 +177,7 @@ namespace Sma5hMusic.GUI.Services
                     DeleteTempFile(file);
                     _logger.LogInformation("Deleted stale loop preview file {LoopPreviewFile}.", file);
                 }
+                TempDirectoryHelper.DeleteIfEmpty(tempPath);
             }
             catch (Exception e)
             {
@@ -248,8 +250,12 @@ namespace Sma5hMusic.GUI.Services
 
                     var extractedInfo = GetAudioInfo(extractedWavFile).GetAwaiter().GetResult();
 
+                    var totalSamples48k = ConvertSampleRate(extractedInfo.TotalSamples, extractedInfo.SampleRate);
                     var loopStart48k = ConvertSampleRate(loopPoints.Value.LoopStartSample, extractedInfo.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopPoints.Value.LoopEndSample, extractedInfo.SampleRate);
+
+                    if (loopEnd48k >= totalSamples48k)
+                        loopEnd48k = totalSamples48k - 1;
 
                     var targetLufs = GetFfmpegLoudnormTarget();
 
@@ -357,8 +363,12 @@ namespace Sma5hMusic.GUI.Services
 
                 try
                 {
+                    var totalSamples48k = ConvertSampleRate(info.TotalSamples, info.SampleRate);
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
+
+                    if (loopEnd48k >= totalSamples48k)
+                        loopEnd48k = totalSamples48k - 1;
 
                     if (applyNormalization)
                     {

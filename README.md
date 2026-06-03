@@ -19,7 +19,7 @@ This is a fork of [Sma5shMusic by Deinonychus71](https://github.com/Deinonychus7
 ![Series Selection](https://elixi.re/i/bfyok.png)
 
 > [!TIP]
-> When using Modular Packs, if one or more Vanilla Series did not contain any songs during the generation, an optional Series Order pack is generated. If loaded, it ensures that each Series is in its correct order in the Music Select / Sound Test screen.
+> When using the Modular Packs options, if one or more Vanilla Series did not contain any songs during the generation, an optional Series Order pack is generated. If loaded, it ensures that each Series is in its correct order in the Music Select / Sound Test screen.
 
 ## Icon Selection and Conversion
 
