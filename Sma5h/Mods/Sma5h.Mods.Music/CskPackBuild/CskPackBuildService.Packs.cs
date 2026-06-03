@@ -21,6 +21,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
             var seriesSoundOrder = BuildSeriesSoundOrder(
                 allSeries,
                 buildResources.OrderOverride);
+            var seriesDatabaseFileCounts = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
             foreach (var context in contextList)
             {
@@ -28,9 +29,19 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
                 foreach (var series in context.SeriesList.Where(series => selectedSeriesKeys.Contains(CreateSeriesKey(context.Mod, series))))
                 {
+                    var seriesName = GetString(series, "name_id");
+                    var databaseFileBaseName = SanitizePathSegment(seriesName, "series", "series database file name");
+                    seriesDatabaseFileCounts.TryGetValue(databaseFileBaseName, out var databaseFileCount);
+                    databaseFileCount++;
+                    seriesDatabaseFileCounts[databaseFileBaseName] = databaseFileCount;
+                    var databaseFileName = databaseFileCount == 1
+                        ? $"{databaseFileBaseName}.json"
+                        : $"{databaseFileBaseName}{databaseFileCount}.json";
+
                     var savedPath = ProcessSeries(
                         series,
                         context.SafePackName,
+                        databaseFileName,
                         outputRoot,
                         generatedBgmFolder,
                         buildResources.PlaylistData,
@@ -170,6 +181,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
         private string ProcessSeries(
             JObject series,
             string packName,
+            string databaseFileName,
             string outputRoot,
             string generatedBgmFolder,
             JObject playlistData,
@@ -219,7 +231,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 metadata,
                 coreBgmIds);
 
-            var outputJsonPath = Path.Combine(seriesDbFolder, $"{SanitizePathSegment(seriesName, "series", "series database file name")}.json");
+            var outputJsonPath = Path.Combine(seriesDbFolder, databaseFileName);
             File.WriteAllText(outputJsonPath, JsonConvert.SerializeObject(songData, Formatting.Indented), new UTF8Encoding(false));
             WriteXmsbt(Path.Combine(seriesUiFolder, "msg_bgm.xmsbt"), msgBgmEntries);
             WriteXmsbt(Path.Combine(seriesUiFolder, "msg_title.xmsbt"), msgTitleEntries);
