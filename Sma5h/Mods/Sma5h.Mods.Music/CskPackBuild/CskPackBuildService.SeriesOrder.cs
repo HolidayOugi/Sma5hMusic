@@ -31,10 +31,12 @@ namespace Sma5h.Mods.Music.CskPackBuild
             if (seriesEntries.Count == 0)
                 return;
 
-            var packName = contexts
-                .Select(p => p.SafePackName)
-                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p)) ?? SinglePackFolderName;
-            var folderName = SanitizePathSegment($"{packName} - Series Order", "Series Order", "series order folder name");
+            var folderName = contexts.Count > 1
+                ? "CSK Packs - Series Order"
+                : SanitizePathSegment(
+                    $"{contexts.Select(p => p.SafePackName).FirstOrDefault(p => !string.IsNullOrWhiteSpace(p)) ?? SinglePackFolderName} - Series Order",
+                    "Series Order",
+                    "series order folder name");
             var databaseFolder = Path.Combine(outputRoot, folderName, "database");
             Directory.CreateDirectory(databaseFolder);
 
