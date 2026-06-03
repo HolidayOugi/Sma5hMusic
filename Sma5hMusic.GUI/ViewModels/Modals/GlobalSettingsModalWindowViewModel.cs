@@ -165,6 +165,9 @@ namespace Sma5hMusic.GUI.ViewModels
             SelectedGUILocale = Locales.FirstOrDefault(p => p.Id == item?.DefaultGUILocale);
             SelectedMSBTLocale = Locales.FirstOrDefault(p => p.Id == item?.DefaultMSBTLocale);
             SelectedPlaylistGenerationItem = PlaylistGenerationModes.FirstOrDefault(p => p.Id == (int?)item?.PlaylistGenerationMode);
+
+            if (item != null && item.AudioNormalizationTargetLufs <= 0)
+                item.AudioNormalizationTargetLufs = 14;
         }
 
         protected override Task<bool> SaveChanges()

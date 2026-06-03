@@ -59,6 +59,9 @@ namespace Sma5hMusic.GUI.ViewModels
         public bool IsAudioImport { get; set; }
 
         [Reactive]
+        public bool ApplyNormalization { get; set; }
+
+        [Reactive]
         public uint SampleRate { get; set; }
 
         [Reactive]
@@ -259,6 +262,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadAudioImportInfo(uint sampleRate, uint totalSamples)
         {
             IsAudioImport = true;
+            ApplyNormalization = false;
             WindowHeight = 920;
             WindowWidth = 980;
             WindowMinWidth = 900;
@@ -273,6 +277,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void ClearAudioImportInfo()
         {
             IsAudioImport = false;
+            ApplyNormalization = false;
             WindowHeight = 400;
             WindowWidth = 520;
             WindowMinWidth = 500;

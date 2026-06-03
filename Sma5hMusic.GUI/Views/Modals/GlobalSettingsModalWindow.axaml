@@ -146,6 +146,18 @@
             <fields:PropertyBooleanField Grid.Column="0" Label="[EXP.] In-Game Volume" IsChecked="{Binding SelectedItem.InGameVolume}" ToolTip="If turned on, the volume parameter of each song will be used to try to get an accurate playback of how loud a song will be in-game. Typically used to normalize songs from within the GUI." />
             <Button Grid.Column="1" Margin="10,10,0,0" Content="Wipe Audio Cache" Command="{Binding ActionWipeAudioCache}"/>
           </Grid>
+          <Grid ColumnDefinitions="*,*">
+            <fields:PropertyField Grid.Column="0"
+                                  Label="Normalization LUFS"
+                                  ToolTip="Target LUFS value used when applying audio normalization before importing. Default is 14.">
+              <fields:PropertyField.FieldContent>
+                <NumericUpDown Value="{Binding SelectedItem.AudioNormalizationTargetLufs, Mode=TwoWay}"
+                              Minimum="1"
+                              Maximum="70"
+                              Increment="1"/>
+              </fields:PropertyField.FieldContent>
+            </fields:PropertyField>
+          </Grid>
         </StackPanel>
         <!-- Path -->
         <StackPanel Classes="content" Grid.Column="2" Grid.Row="0" HorizontalAlignment="Stretch">
@@ -159,7 +171,7 @@
           <fields:PropertyFolderPickupField x:Name="GameResourcesPath" Label="Game Resources Directory" ToolTip="Path where required game resources will go." Text="{Binding SelectedItem.GameResourcesPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="GameResourcesPath"/>
           <fields:PropertyFolderPickupField x:Name="ToolsPath" Label="Tools Directory" ToolTip="Path where required tools will go." Text="{Binding SelectedItem.ToolsPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="ToolsPath"/>
           <fields:PropertyFolderPickupField x:Name="YtDlpPath" Label="yt-dlp Executable" ToolTip="Optional path to yt-dlp.exe used for YouTube imports." Text="{Binding SelectedItem.YtDlpPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="YtDlpPath"/>
-          <fields:PropertyFolderPickupField x:Name="FfmpegPath" Label="ffmpeg Executable" ToolTip="Optional path to ffmpeg.exe used for YouTube imports." Text="{Binding SelectedItem.FfmpegPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="FfmpegPath"/>
+          <fields:PropertyFolderPickupField x:Name="FfmpegPath" Label="ffmpeg Executable" ToolTip="Optional path to ffmpeg.exe used for YouTube imports and sound normalization." Text="{Binding SelectedItem.FfmpegPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="FfmpegPath"/>
           <!--<fields:PropertyFolderPickupField Label="Log Directory" ToolTip="Path where logs will go." Text="{Binding SelectedItem.LogPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="LogPath"/>-->
           <!--<fields:PropertyFolderPickupField Label="Audio Cache Directory" ToolTip="Path where audio cache will go, if enabled." Text="{Binding SelectedItem.CachePath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="CachePath"/>-->
           <!--<fields:PropertyFolderPickupField Label="Temp Directory" ToolTip="Path where some temporary files will go when a build is happening." Text="{Binding SelectedItem.TempPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="TempPath"/>-->

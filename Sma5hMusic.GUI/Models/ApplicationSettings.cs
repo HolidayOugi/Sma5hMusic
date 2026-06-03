@@ -22,6 +22,7 @@ namespace Sma5h.Mods.Music
             public bool SkipWarningGameVersion { get; set; }
             public bool AutoBackupAtStart { get; set; }
             public bool InGameVolume { get; set; }
+            public double AudioNormalizationTargetLufs { get; set; }
             public bool HideIndexColumn { get; set; }
             public bool HideSeriesColumn { get; set; }
             public bool HideRecordColumn { get; set; }

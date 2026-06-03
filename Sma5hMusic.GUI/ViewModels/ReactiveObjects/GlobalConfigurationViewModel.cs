@@ -52,6 +52,7 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public bool SkipWarningGameVersion { get; set; }
         [Reactive]
+
         public bool AutoBackupAtStart { get; set; }
         [Reactive]
         public ushort PlaylistAutoMappingIncidence { get; set; }
@@ -66,6 +67,8 @@ namespace Sma5hMusic.GUI.ViewModels
         public bool HideRecordColumn { get; set; }
         [Reactive]
         public bool HideModColumn { get; set; }
+        [Reactive]
+        public double AudioNormalizationTargetLufs { get; set; }
 
         public ApplicationSettings GetReference()
         {

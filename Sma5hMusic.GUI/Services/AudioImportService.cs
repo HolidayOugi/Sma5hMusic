@@ -39,6 +39,12 @@ namespace Sma5hMusic.GUI.Services
             return SourceAudioExtensions.Any(p => string.Equals(p, extension, StringComparison.OrdinalIgnoreCase));
         }
 
+        public bool IsFfmpegConfigured()
+        {
+            var executable = _config.CurrentValue.FfmpegPath;
+            return !string.IsNullOrWhiteSpace(executable) && File.Exists(executable);
+        }
+
         public async Task<AudioImportInfo> GetAudioInfo(string filename)
         {
             return await Task.Run(() =>
@@ -177,7 +183,13 @@ namespace Sma5hMusic.GUI.Services
             }
         }
 
-        public async Task<string> ConvertToNus3Audio(string toneId, string filename, string modPath, uint loopStartSample, uint loopEndSample)
+        public async Task<string> ConvertToNus3Audio(
+            string toneId,
+            string filename,
+            string modPath,
+            uint loopStartSample,
+            uint loopEndSample,
+            bool applyNormalization = false)
         {
             return await Task.Run(() =>
             {
@@ -185,6 +197,7 @@ namespace Sma5hMusic.GUI.Services
                     return filename;
 
                 var info = GetAudioInfo(filename).GetAwaiter().GetResult();
+
                 if (loopEndSample == 0 || loopEndSample > info.TotalSamples)
                     throw new InvalidOperationException($"Loop end sample must be between 1 and {info.TotalSamples}.");
 
@@ -195,6 +208,7 @@ namespace Sma5hMusic.GUI.Services
                 Directory.CreateDirectory(GetTempPath());
 
                 var tempId = Guid.NewGuid().ToString("N");
+                var tempNormalizedWavFile = Path.Combine(GetTempPath(), $"{tempId}_normalized.wav");
                 var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
                 var tempLopusFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
                 var outputFile = Path.Combine(modPath, $"{toneId}.nus3audio");
@@ -207,13 +221,50 @@ namespace Sma5hMusic.GUI.Services
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
 
-                    _logger.LogInformation("Converting {InputFile} to WAV 48kHz for import.", filename);
-                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", tempWavFile);
+                    if (applyNormalization)
+                    {
+                        var targetLufs = GetFfmpegLoudnormTarget();
+
+                        _logger.LogInformation(
+                            "Normalizing audio before import. Input={InputFile}, Output={NormalizedFile}, TargetLUFS={TargetLUFS}.",
+                            filename,
+                            tempNormalizedWavFile,
+                            targetLufs
+                        );
+
+                        NormalizeAudioToWav(filename, tempNormalizedWavFile, targetLufs);
+
+                        File.Copy(tempNormalizedWavFile, tempWavFile, true);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Converting {InputFile} to WAV 48kHz for import.", filename);
+
+                        RunTool(
+                            GetSoxExe(),
+                            filename,
+                            "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture),
+                            "-b", "16",
+                            "-e", "signed-integer",
+                            tempWavFile
+                        );
+                    }
 
                     _logger.LogInformation("Encoding temporary LOPUS with loop {LoopStart}-{LoopEnd}.", loopStart48k, loopEnd48k);
-                    RunTool(GetVGAudioCliExe(), tempWavFile, tempLopusFile, "-l", $"{loopStart48k}-{loopEnd48k}", "--bitrate", "64000", "--cbr", "--opusheader", "namco");
+
+                    RunTool(
+                        GetVGAudioCliExe(),
+                        tempWavFile,
+                        tempLopusFile,
+                        "-l", $"{loopStart48k}-{loopEnd48k}",
+                        "--bitrate", "64000",
+                        "--cbr",
+                        "--opusheader",
+                        "namco"
+                    );
 
                     _logger.LogInformation("Creating NUS3AUDIO {OutputFile}.", outputFile);
+
                     RunTool(GetNus3AudioExe(), "-n", "-w", outputFile);
                     RunTool(GetNus3AudioExe(), "-A", toneId, tempLopusFile, "-w", outputFile);
 
@@ -221,6 +272,7 @@ namespace Sma5hMusic.GUI.Services
                 }
                 finally
                 {
+                    DeleteTempFile(tempNormalizedWavFile);
                     DeleteTempFile(tempWavFile);
                     DeleteTempFile(tempLopusFile);
                 }
@@ -484,6 +536,173 @@ namespace Sma5hMusic.GUI.Services
             }
 
             return rankedCandidates;
+        }
+
+        private double GetAudioNormalizationTargetLufs()
+        {
+            var value = _config.CurrentValue.Sma5hMusicGUI?.AudioNormalizationTargetLufs ?? 0;
+
+            return value > 0
+                ? value
+                : 14;
+        }
+
+        private double GetFfmpegLoudnormTarget()
+        {
+            return -Math.Abs(GetAudioNormalizationTargetLufs());
+        }
+
+        private void NormalizeAudioToWav(string inputFile, string outputFile, double targetLufs)
+        {
+            var firstPassFilter = string.Format(
+                CultureInfo.InvariantCulture,
+                "loudnorm=I={0}:TP=-1:LRA=11:print_format=json",
+                targetLufs
+            );
+
+            var firstPassOutput = RunFfmpeg(
+                "-y",
+                "-i", inputFile,
+                "-af", firstPassFilter,
+                "-f", "null",
+                "-"
+            );
+
+            var stats = ParseLoudnormStats(firstPassOutput);
+
+            var secondPassFilter = string.Format(
+                CultureInfo.InvariantCulture,
+                "loudnorm=I={0}:TP=-1:LRA=11:measured_I={1}:measured_LRA={2}:measured_TP={3}:measured_thresh={4}:offset={5}:linear=true:print_format=summary",
+                targetLufs,
+                stats["input_i"],
+                stats["input_lra"],
+                stats["input_tp"],
+                stats["input_thresh"],
+                stats["target_offset"]
+            );
+
+            RunFfmpeg(
+                "-y",
+                "-i", inputFile,
+                "-af", secondPassFilter,
+                "-ar", TargetSampleRate.ToString(CultureInfo.InvariantCulture),
+                "-acodec", "pcm_s16le",
+                outputFile
+            );
+
+            if (!File.Exists(outputFile))
+                throw new InvalidOperationException("Audio normalization completed, but the normalized WAV file could not be found.");
+        }
+
+        private Dictionary<string, string> ParseLoudnormStats(string output)
+        {
+            var keys = new[]
+            {
+                "input_i",
+                "input_tp",
+                "input_lra",
+                "input_thresh",
+                "target_offset"
+            };
+
+            var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var key in keys)
+            {
+                var match = Regex.Match(
+                    output,
+                    $"\"{Regex.Escape(key)}\"\\s*:\\s*\"?([^\",\\r\\n}}]+)\"?",
+                    RegexOptions.IgnoreCase
+                );
+
+                if (!match.Success)
+                    throw new InvalidOperationException($"Could not read loudnorm value '{key}' from ffmpeg output.");
+
+                result[key] = match.Groups[1].Value.Trim();
+            }
+
+            return result;
+        }
+
+        private string RunFfmpeg(params string[] arguments)
+        {
+            var executable = _config.CurrentValue.FfmpegPath;
+
+            if (string.IsNullOrWhiteSpace(executable) || !File.Exists(executable))
+                throw new FileNotFoundException("ffmpeg.exe is not configured. Set its path in Global Settings.", executable);
+
+            _logger.LogInformation(
+                "Running ffmpeg: {Executable} {Arguments}",
+                executable,
+                string.Join(" ", arguments.Select(p => $"\"{p}\""))
+            );
+
+            var startInfo = new ProcessStartInfo
+            {
+                FileName = executable,
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                CreateNoWindow = true
+            };
+
+            // Prevent ffmpeg from trying to read interactive input.
+            startInfo.ArgumentList.Add("-nostdin");
+
+            foreach (var argument in arguments)
+                startInfo.ArgumentList.Add(argument);
+
+            using var process = new Process
+            {
+                StartInfo = startInfo,
+                EnableRaisingEvents = true
+            };
+
+            var stdout = new System.Text.StringBuilder();
+            var stderr = new System.Text.StringBuilder();
+
+            process.OutputDataReceived += (sender, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(e.Data))
+                    return;
+
+                stdout.AppendLine(e.Data);
+                _logger.LogInformation("ffmpeg stdout: {Line}", e.Data);
+            };
+
+            process.ErrorDataReceived += (sender, e) =>
+            {
+                if (string.IsNullOrWhiteSpace(e.Data))
+                    return;
+
+                stderr.AppendLine(e.Data);
+                _logger.LogInformation("ffmpeg stderr: {Line}", e.Data);
+            };
+
+            process.Start();
+
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            process.WaitForExit();
+
+            var output = stdout.ToString();
+            var error = stderr.ToString();
+
+            _logger.LogInformation(
+                "ffmpeg exited. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}",
+                process.ExitCode,
+                output,
+                error
+            );
+
+            if (process.ExitCode != 0)
+                throw new InvalidOperationException($"ffmpeg failed: {error}{output}");
+
+            return string.Join(
+                Environment.NewLine,
+                new[] { output, error }.Where(p => !string.IsNullOrWhiteSpace(p))
+            );
         }
 
         private static double TryParseDouble(IReadOnlyList<string> values, int index)

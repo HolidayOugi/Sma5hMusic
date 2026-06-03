@@ -908,7 +908,26 @@ namespace Sma5hMusic.GUI.ViewModels
                         {
                             IsLoading = true;
                             IsShowingDebug = true;
-                            importFile = await _audioImportService.ConvertToNus3Audio(toneId, inputFile, managerMod.ModPath, _vmToneIdCreation.LoopStartSample, _vmToneIdCreation.LoopEndSample);
+
+                            var applyNormalization = _vmToneIdCreation.ApplyNormalization;
+
+                            if (applyNormalization && !_audioImportService.IsFfmpegConfigured())
+                            {
+                                await _messageDialog.ShowInformation(
+                                    "Audio normalization skipped",
+                                    "ffmpeg is not configured. The song will be imported without normalization."
+                                );
+
+                                applyNormalization = false;
+                            }
+
+                            importFile = await _audioImportService.ConvertToNus3Audio(
+                                toneId,
+                                inputFile,
+                                managerMod.ModPath,
+                                _vmToneIdCreation.LoopStartSample,
+                                _vmToneIdCreation.LoopEndSample,
+                                applyNormalization);
                         }
                         catch (Exception e)
                         {
