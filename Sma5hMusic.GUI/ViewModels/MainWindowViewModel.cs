@@ -877,6 +877,8 @@ namespace Sma5hMusic.GUI.ViewModels
                 _vmToneIdCreation.LoadToneId(Path.GetFileNameWithoutExtension(inputFile));
 
                 var requiresConversion = _audioImportService.RequiresConversion(inputFile);
+                var isNus3Audio = _audioImportService.IsNus3Audio(inputFile);
+
                 if (requiresConversion)
                 {
                     try
@@ -890,10 +892,15 @@ namespace Sma5hMusic.GUI.ViewModels
                         continue;
                     }
                 }
+                else if (isNus3Audio)
+                {
+                    _vmToneIdCreation.LoadNus3AudioImportInfo();
+                }
                 else
                 {
                     _vmToneIdCreation.ClearAudioImportInfo();
                 }
+
 
                 var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
                 var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);
@@ -901,6 +908,17 @@ namespace Sma5hMusic.GUI.ViewModels
                 {
                     string toneId = _vmToneIdCreation.ToneId;
                     var importFile = inputFile;
+                    var applyNormalization = _vmToneIdCreation.ApplyNormalization;
+
+                    if (applyNormalization && !_audioImportService.IsFfmpegConfigured())
+                    {
+                        await _messageDialog.ShowInformation(
+                            "Audio normalization skipped",
+                            "ffmpeg is not configured. The song will be imported without normalization."
+                        );
+
+                        applyNormalization = false;
+                    }
 
                     if (requiresConversion)
                     {
@@ -909,18 +927,6 @@ namespace Sma5hMusic.GUI.ViewModels
                             IsLoading = true;
                             IsShowingDebug = true;
 
-                            var applyNormalization = _vmToneIdCreation.ApplyNormalization;
-
-                            if (applyNormalization && !_audioImportService.IsFfmpegConfigured())
-                            {
-                                await _messageDialog.ShowInformation(
-                                    "Audio normalization skipped",
-                                    "ffmpeg is not configured. The song will be imported without normalization."
-                                );
-
-                                applyNormalization = false;
-                            }
-
                             importFile = await _audioImportService.ConvertToNus3Audio(
                                 toneId,
                                 inputFile,
@@ -928,6 +934,29 @@ namespace Sma5hMusic.GUI.ViewModels
                                 _vmToneIdCreation.LoopStartSample,
                                 _vmToneIdCreation.LoopEndSample,
                                 applyNormalization);
+                        }
+                        catch (Exception e)
+                        {
+                            await _messageDialog.ShowError("Audio import failed", e.Message, e);
+                            continue;
+                        }
+                        finally
+                        {
+                            IsLoading = false;
+                            IsShowingDebug = false;
+                        }
+                    }
+                    else if (isNus3Audio && applyNormalization)
+                    {
+                        try
+                        {
+                            IsLoading = true;
+                            IsShowingDebug = true;
+
+                            importFile = await _audioImportService.NormalizeNus3Audio(
+                                toneId,
+                                inputFile,
+                                managerMod.ModPath);
                         }
                         catch (Exception e)
                         {

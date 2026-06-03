@@ -183,6 +183,145 @@ namespace Sma5hMusic.GUI.Services
             }
         }
 
+        public bool IsNus3Audio(string filename)
+        {
+            return string.Equals(
+                Path.GetExtension(filename),
+                ".nus3audio",
+                StringComparison.OrdinalIgnoreCase);
+        }
+
+        public async Task<string> NormalizeNus3Audio(
+            string toneId,
+            string filename,
+            string modPath)
+        {
+            return await Task.Run(() =>
+            {
+                if (!IsNus3Audio(filename))
+                    throw new InvalidOperationException($"'{Path.GetFileName(filename)}' is not a NUS3AUDIO file.");
+
+                Directory.CreateDirectory(modPath);
+                Directory.CreateDirectory(GetTempPath());
+
+                var outputFile = Path.Combine(modPath, $"{toneId}.nus3audio");
+
+                if (File.Exists(outputFile))
+                    throw new InvalidOperationException($"The destination file '{Path.GetFileName(outputFile)}' already exists in the selected mod.");
+
+                var tempId = Guid.NewGuid().ToString("N");
+                var extractedWavFile = Path.Combine(GetTempPath(), $"{tempId}_source.wav");
+                var normalizedWavFile = Path.Combine(GetTempPath(), $"{tempId}_normalized.wav");
+                var tempLopusFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
+
+                try
+                {
+                    var loopPoints = ExtractNus3AudioLoopPoints(filename);
+
+                    if (loopPoints == null)
+                        throw new InvalidOperationException($"Could not read loop points from '{Path.GetFileName(filename)}'.");
+
+                    _logger.LogInformation(
+                        "Extracted NUS3AUDIO loop points. File={File}, LoopStart={LoopStart}, LoopEnd={LoopEnd}.",
+                        filename,
+                        loopPoints.Value.LoopStartSample,
+                        loopPoints.Value.LoopEndSample
+                    );
+
+                    _logger.LogInformation(
+                        "Extracting NUS3AUDIO to WAV. Input={InputFile}, Output={OutputFile}.",
+                        filename,
+                        extractedWavFile
+                    );
+
+                    RunTool(
+                        GetVgmStreamExe(),
+                        "-L",
+                        "-F",
+                        "-o",
+                        extractedWavFile,
+                        filename
+                    );
+
+                    if (!File.Exists(extractedWavFile))
+                        throw new InvalidOperationException("NUS3AUDIO extraction completed, but the extracted WAV file could not be found.");
+
+                    var extractedInfo = GetAudioInfo(extractedWavFile).GetAwaiter().GetResult();
+
+                    var loopStart48k = ConvertSampleRate(loopPoints.Value.LoopStartSample, extractedInfo.SampleRate);
+                    var loopEnd48k = ConvertSampleRate(loopPoints.Value.LoopEndSample, extractedInfo.SampleRate);
+
+                    var targetLufs = GetFfmpegLoudnormTarget();
+
+                    _logger.LogInformation(
+                        "Normalizing extracted NUS3AUDIO WAV. Input={InputFile}, Output={OutputFile}, TargetLUFS={TargetLUFS}.",
+                        extractedWavFile,
+                        normalizedWavFile,
+                        targetLufs
+                    );
+
+                    NormalizeAudioToWav(extractedWavFile, normalizedWavFile, targetLufs);
+
+                    _logger.LogInformation(
+                        "Encoding normalized NUS3AUDIO WAV to LOPUS with old loop points {LoopStart}-{LoopEnd}.",
+                        loopStart48k,
+                        loopEnd48k
+                    );
+
+                    RunTool(
+                        GetVGAudioCliExe(),
+                        normalizedWavFile,
+                        tempLopusFile,
+                        "-l",
+                        $"{loopStart48k}-{loopEnd48k}",
+                        "--bitrate",
+                        "64000",
+                        "--cbr",
+                        "--opusheader",
+                        "namco"
+                    );
+
+                    _logger.LogInformation("Creating normalized NUS3AUDIO {OutputFile}.", outputFile);
+
+                    RunTool(GetNus3AudioExe(), "-n", "-w", outputFile);
+                    RunTool(GetNus3AudioExe(), "-A", toneId, tempLopusFile, "-w", outputFile);
+
+                    return outputFile;
+                }
+                finally
+                {
+                    DeleteTempFile(extractedWavFile);
+                    DeleteTempFile(normalizedWavFile);
+                    DeleteTempFile(tempLopusFile);
+                }
+            });
+        }
+
+        private (uint LoopStartSample, uint LoopEndSample)? ExtractNus3AudioLoopPoints(string filename)
+        {
+            var output = RunTool(GetVgmStreamExe(), "-m", filename);
+
+            uint? loopStart = null;
+            uint? loopEnd = null;
+
+            foreach (var line in output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                var startMatch = Regex.Match(line, @"loop start:\s*(\d+)", RegexOptions.IgnoreCase);
+                var endMatch = Regex.Match(line, @"loop end:\s*(\d+)", RegexOptions.IgnoreCase);
+
+                if (startMatch.Success && uint.TryParse(startMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedLoopStart))
+                    loopStart = parsedLoopStart;
+
+                if (endMatch.Success && uint.TryParse(endMatch.Groups[1].Value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedLoopEnd))
+                    loopEnd = parsedLoopEnd;
+            }
+
+            if (loopStart.HasValue && loopEnd.HasValue)
+                return (loopStart.Value, loopEnd.Value);
+
+            return null;
+        }
+
         public async Task<string> ConvertToNus3Audio(
             string toneId,
             string filename,

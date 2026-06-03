@@ -59,6 +59,9 @@ namespace Sma5hMusic.GUI.ViewModels
         public bool IsAudioImport { get; set; }
 
         [Reactive]
+        public bool CanApplyNormalization { get; set; }
+
+        [Reactive]
         public bool ApplyNormalization { get; set; }
 
         [Reactive]
@@ -263,6 +266,8 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             IsAudioImport = true;
             ApplyNormalization = false;
+            CanApplyNormalization = true;
+
             WindowHeight = 920;
             WindowWidth = 980;
             WindowMinWidth = 900;
@@ -274,10 +279,33 @@ namespace Sma5hMusic.GUI.ViewModels
             ClearAutoLoopPoints();
         }
 
+        public void LoadNus3AudioImportInfo()
+        {
+            IsAudioImport = false;
+            ApplyNormalization = false;
+            CanApplyNormalization = true;
+
+            WindowHeight = 400;
+            WindowWidth = 520;
+            WindowMinWidth = 500;
+            SampleRate = 0;
+            TotalSamples = 0;
+            TotalTimeMs = 0;
+            LoopStartSample = 0;
+            LoopEndSample = 0;
+            LoopStartMs = 0;
+            LoopEndMs = 0;
+            SetLoopStartTimeParts(0);
+            SetLoopEndTimeParts(0);
+            ClearAutoLoopPoints();
+        }
+
         public void ClearAudioImportInfo()
         {
             IsAudioImport = false;
             ApplyNormalization = false;
+            CanApplyNormalization = false;
+            
             WindowHeight = 400;
             WindowWidth = 520;
             WindowMinWidth = 500;

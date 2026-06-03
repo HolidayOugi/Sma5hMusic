@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Sma5h.Mods.Music;
 using Sma5hMusic.GUI.Dialogs;
+using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
 using Sma5hMusic.GUI.Mods.Music.Models.AutoMapper;
 using Sma5hMusic.GUI.Services;
@@ -55,6 +56,8 @@ namespace Sma5hMusic.GUI
             var configuration = configurationBuilder.Build();
             Configuration = configuration;
 
+            ConfigureNativeLibraryPaths(configuration);
+
             var loggerFactory = LoggerFactory.Create(builder => builder
                 .SetMinimumLevel(LogLevel.Debug)
                 .AddFile(configuration.GetSection("Logging"), c =>
@@ -97,6 +100,23 @@ namespace Sma5hMusic.GUI
 
             //Add to Splat
             services.UseMicrosoftDependencyResolver();
+        }
+
+        private static void ConfigureNativeLibraryPaths(IConfiguration configuration)
+        {
+            var toolsPath = configuration["ToolsPath"];
+
+            if (string.IsNullOrWhiteSpace(toolsPath))
+                toolsPath = "Tools";
+
+            var basePath = GetBasePath();
+
+            var fullToolsPath = Path.IsPathRooted(toolsPath)
+                ? toolsPath
+                : Path.Combine(basePath, toolsPath);
+
+            NativeLibraryPathHelper.AddDirectoryToProcessPath(
+                Path.Combine(fullToolsPath, "vgmstream"));
         }
 
         private static string GetBasePath()
