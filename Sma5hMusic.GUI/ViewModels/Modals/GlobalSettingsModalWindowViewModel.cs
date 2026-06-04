@@ -66,8 +66,8 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionOpenFileDialog = ReactiveCommand.CreateFromTask<string>(OnChoosePath);
 
             this.ValidationRule(p => p.SelectedItem.OutputPath,
-                p => !string.IsNullOrEmpty(p) && Directory.Exists(p),
-                "This directory does not exist.");
+                p => !string.IsNullOrWhiteSpace(p),
+                "Output directory is required.");
 
             this.ValidationRule(p => p.SelectedItem.GameResourcesPath,
                 p => !string.IsNullOrEmpty(p) && Directory.Exists(p),

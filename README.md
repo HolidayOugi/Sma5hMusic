@@ -38,6 +38,9 @@ When loaded, the user is prompted to input the loop points for the given song. T
 
 ![Loop Point Selection](https://elixi.re/i/qj2ap.png)
 
+> [!TIP]
+> The preview duration can be set in the Global Settings.
+
 ### Automatic Loop Detection
 
 > [!NOTE]
@@ -81,6 +84,7 @@ The songs can be imported either from their URL or from a text file containing a
 * (*Should have*) fixed bug where songs would stop playing in-game due to their order in the global song list.
 * Packs now are output in a subfolder of the build folder.
 * If a song from custom Series was not manually added to a playlist, the software will automatically add it to the Battlefield playlist to ensure it shows up in-game.
+* Settings can now be saved when output folder is missing.
 * Fixed importing of files with Japanese characters.
 
 ## Thanks & Repos of the different tools

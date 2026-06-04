@@ -147,24 +147,14 @@
             <Button Grid.Column="1" Margin="10,10,0,0" Content="Wipe Audio Cache" Command="{Binding ActionWipeAudioCache}"/>
           </Grid>
           <Grid ColumnDefinitions="*,*">
-            <fields:PropertyField Grid.Column="0"
-                                  Label="Normalization LUFS"
-                                  ToolTip="Target LUFS value used when applying audio normalization before importing. Default is 14.">
+            <fields:PropertyField Grid.Column="0" Label="Normalization LUFS" ToolTip="Target LUFS value used when applying audio normalization before importing. Default is 14.">
               <fields:PropertyField.FieldContent>
-                <NumericUpDown Value="{Binding SelectedItem.AudioNormalizationTargetLufs, Mode=TwoWay}"
-                              Minimum="1"
-                              Maximum="70"
-                              Increment="1"/>
+                <NumericUpDown Value="{Binding SelectedItem.AudioNormalizationTargetLufs, Mode=TwoWay}" Minimum="1" Maximum="70" Increment="1"/>
               </fields:PropertyField.FieldContent>
             </fields:PropertyField>
-            <fields:PropertyField Grid.Column="1"
-                                  Label="Loop Preview Seconds"
-                                  ToolTip="Seconds played before and after the loop point. Default is 6.">
+            <fields:PropertyField Grid.Column="1" Label="Loop Preview Seconds" ToolTip="Seconds played before and after the loop point. Default is 6.">
               <fields:PropertyField.FieldContent>
-                <NumericUpDown Value="{Binding SelectedItem.LoopPreviewSeconds, Mode=TwoWay}"
-                              Minimum="2"
-                              Maximum="10"
-                              Increment="1"/>
+                <NumericUpDown Value="{Binding SelectedItem.LoopPreviewSeconds, Mode=TwoWay}" Minimum="2" Maximum="10" Increment="1"/>
               </fields:PropertyField.FieldContent>
             </fields:PropertyField>
           </Grid>
