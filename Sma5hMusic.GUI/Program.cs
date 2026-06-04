@@ -166,6 +166,7 @@ namespace Sma5hMusic.GUI
                 { "Sma5hMusicGUI:SkipWarningGameVersion", "false" },
                 { "Sma5hMusicGUI:AutoBackupAtStart", "true" },
                 { "Sma5hMusicGUI:InGameVolume", "false" },
+                { "Sma5hMusicGUI:LoopPreviewSeconds", "6" },
                 { "Sma5hMusicGUI:HideIndexColumn", "false" },
                 { "Sma5hMusicGUI:HideSeriesColumn", "false" },
                 { "Sma5hMusicGUI:HideRecordColumn", "false" },

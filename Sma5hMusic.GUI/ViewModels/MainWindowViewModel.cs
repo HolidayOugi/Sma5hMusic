@@ -12,7 +12,6 @@ using Sma5h.Mods.Music.Interfaces;
 using Sma5hMusic.GUI.Dialogs;
 using Sma5hMusic.GUI.Helpers;
 using Sma5hMusic.GUI.Interfaces;
-using Sma5hMusic.GUI.Models;
 using Sma5hMusic.GUI.Views;
 using System;
 using System.Collections.Generic;
@@ -21,13 +20,12 @@ using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
-using System.Threading;
 using VGMMusic;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Sma5hMusic.GUI.ViewModels
 {
-    public class MainWindowViewModel : ViewModelBase
+    public partial class MainWindowViewModel : ViewModelBase
     {
         private readonly IDevToolsService _devTools;
         private readonly IGUIStateManager _guiStateManager;
@@ -35,12 +33,8 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IVGMMusicPlayer _musicPlayer;
         private readonly IMessageDialog _messageDialog;
         private readonly IFileDialog _fileDialog;
-        private readonly IAudioImportService _audioImportService;
-        private readonly INus3AudioBatchNormalizationService _nus3AudioBatchNormalizationService;
-        private readonly IYoutubeImportService _youtubeImportService;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
-        private readonly ICskPackBuildService _cskPackBuildService;
         private readonly IOptionsMonitor<ApplicationSettings> _appSettings;
         private readonly ILogger _logger;
         private readonly IMapper _mapper;
@@ -61,7 +55,6 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly ModalDialog<GlobalSettingsModalWindow, GlobalSettingsModalWindowViewModel, GlobalConfigurationViewModel> _dialogGlobalSettingsEditor;
         private readonly PlaylistStageAssignementModalWindowViewModel _vmStageAssignement;
         private readonly ToneIdCreationModalWindowModel _vmToneIdCreation;
-        private readonly YoutubeImportModalWindowViewModel _vmYoutubeImport;
 
         [Reactive]
         public string Title { get; set; }
@@ -81,8 +74,6 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionExit { get; }
         public ReactiveCommand<Unit, Unit> ActionBuild { get; }
         public ReactiveCommand<Unit, Unit> ActionBuildNoCache { get; }
-        public ReactiveCommand<Unit, Unit> ActionBuildCskPacks { get; }
-        public ReactiveCommand<Unit, Unit> ActionBuildSingleCskPack { get; }
         public ReactiveCommand<Unit, Unit> ActionRefreshData { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleAdvanced { get; }
         public ReactiveCommand<Unit, Unit> ActionToggleConsole { get; }
@@ -94,7 +85,6 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionOpenResourcesFolder { get; }
         public ReactiveCommand<Unit, Unit> ActionOpenLogsFolder { get; }
         public ReactiveCommand<Unit, Unit> ActionExportSongsCSV { get; }
-        public ReactiveCommand<Unit, Unit> ActionNormalizeNus3AudioFiles { get; }
         public ReactiveCommand<Unit, Unit> ActionFixUnknownValues { get; }
         public ReactiveCommand<Unit, Unit> ActionReorderSongsMod { get; }
         public ReactiveCommand<bool, Unit> ActionUpdateBgmSelector { get; }
@@ -275,99 +265,6 @@ namespace Sma5hMusic.GUI.ViewModels
             });
         }
 
-        public async Task OnBuildCskPacks()
-        {
-            await BuildCskPacks(false);
-        }
-
-        public async Task OnBuildSingleCskPack()
-        {
-            var buildStarted = false;
-            try
-            {
-                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
-                if (availableSeries.Count == 0)
-                {
-                    await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
-                    return;
-                }
-
-                IsLoading = true;
-                IsShowingDebug = true;
-                buildStarted = true;
-                await _musicPlayer.Stop();
-                _logger.LogInformation("Building single CSK pack for all {SeriesCount} available series.", availableSeries.Count);
-
-                await _cskPackBuildService.BuildSingle(availableSeries.Select(p => p.Key));
-                await _messageDialog.ShowInformation("Complete", "Single CSK pack build complete.");
-            }
-            catch (Exception e)
-            {
-                await _messageDialog.ShowError("CSK pack build failed", e.Message, e);
-            }
-            finally
-            {
-                if (buildStarted)
-                {
-                    IsLoading = false;
-                    IsShowingDebug = false;
-                }
-            }
-        }
-
-        #region CSK Pack Build
-
-        private async Task BuildCskPacks(bool singlePack)
-        {
-            var buildStarted = false;
-            try
-            {
-                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
-                if (availableSeries.Count == 0)
-                {
-                    await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
-                    return;
-                }
-
-                var pickerViewModel = new CskPackSeriesPickerModalWindowViewModel(availableSeries);
-                var pickerWindow = new CskPackSeriesPickerModalWindow { DataContext = pickerViewModel };
-                var pickerResult = await pickerWindow.ShowDialog<CskPackSeriesPickerModalWindow>(_rootDialog.Window);
-                if (pickerResult == null)
-                    return;
-
-                var selectedSeriesKeys = pickerViewModel.GetSelectedSeriesKeys().ToList();
-                if (selectedSeriesKeys.Count == 0)
-                    return;
-
-                IsLoading = true;
-                IsShowingDebug = true;
-                buildStarted = true;
-                await _musicPlayer.Stop();
-                _logger.LogInformation("Building {CskBuildMode} CSK pack(s) for {SelectedSeriesCount} selected series.", singlePack ? "single" : "modular", selectedSeriesKeys.Count);
-
-                if (singlePack)
-                    await _cskPackBuildService.BuildSingle(selectedSeriesKeys);
-                else
-                    await _cskPackBuildService.Build(selectedSeriesKeys);
-
-                await _messageDialog.ShowInformation("Complete", singlePack ? "Single CSK pack build complete." : "Modular CSK packs build complete.");
-            }
-            catch (Exception e)
-            {
-                await _messageDialog.ShowError("CSK pack build failed", e.Message, e);
-            }
-            finally
-            {
-                if (buildStarted)
-                {
-                    IsLoading = false;
-                    IsShowingDebug = false;
-                }
-            }
-        }
-
-        #endregion
-
         public async Task OnInitData(bool backupData = false)
         {
             IsLoading = true;
@@ -429,8 +326,8 @@ namespace Sma5hMusic.GUI.ViewModels
                 "SoX: https://sox.sourceforge.net/ \r\nSoX contributors\r\n\r\n" +
                 "PyMusicLooper: https://github.com/arkrow/PyMusicLooper \r\narkrow and contributors\r\n\r\n" +
                 "CrossArc: https://github.com/Ploaj/ArcCross \r\nPloaj, ScanMountGoat, BenHall-7, shadowninja108, jam1garner, M-1-RLG\r\n\r\n" +
-                "BCnEncoder.NET: https://github.com/Nominom/BCnEncoder.NET \r\nNominom and contributors\r\n\r\n" +
-                "SkiaSharp: https://github.com/mono/SkiaSharp \r\nMono/SkiaSharp contributors\r\n\r\n");
+                "yt-dlp: https://github.com/yt-dlp/yt-dlp \r\nytdlp contributors\r\n\r\n" +
+                "FFmpeg: https://github.com/FFmpeg/FFmpeg \r\nFFmpeg contributors\r\n\r\n");
         }
 
         public void OnWikiOpen()
@@ -469,161 +366,6 @@ namespace Sma5hMusic.GUI.ViewModels
             }
         }
 
-        public async Task NormalizeNus3AudioFiles()
-        {
-            if (!_audioImportService.IsFfmpegConfigured())
-            {
-                await _messageDialog.ShowError(
-                    "ffmpeg is not configured",
-                    "Set the path to ffmpeg.exe in Global Settings before normalizing NUS3AUDIO files."
-                );
-                return;
-            }
-
-            var musicModsPath = _appSettings.CurrentValue.Sma5hMusic.ModPath;
-            if (string.IsNullOrWhiteSpace(musicModsPath) || !Directory.Exists(musicModsPath))
-            {
-                await _messageDialog.ShowError(
-                    "NUS3AUDIO normalization failed",
-                    $"The MusicMods folder could not be found:\r\n{musicModsPath}"
-                );
-                return;
-            }
-
-            var files = _nus3AudioBatchNormalizationService.GetNus3AudioFiles(musicModsPath);
-            if (files.Count == 0)
-            {
-                await _messageDialog.ShowInformation(
-                    "NUS3AUDIO normalization",
-                    $"No .nus3audio files were found in:\r\n{musicModsPath}"
-                );
-                return;
-            }
-
-            var confirm = await _messageDialog.ShowWarningConfirm(
-                "Normalize NUS3AUDIO files?",
-                $"This will normalize {files.Count} .nus3audio file(s) found in MusicMods and overwrite them after successful normalization.\r\n\r\nPlease make sure you have a backup before continuing."
-            );
-
-            if (!confirm)
-                return;
-
-            ScriptProgressModalWindow progressWindow = null;
-            ScriptProgressModalWindowViewModel progressVm = null;
-            Task progressDialogTask = null;
-
-            using var cancellationTokenSource = new CancellationTokenSource();
-
-            var userCancelled = false;
-            var closingProgressWindowProgrammatically = false;
-            Nus3AudioBatchNormalizationResult result = null;
-
-            try
-            {
-                progressVm = new ScriptProgressModalWindowViewModel();
-                progressVm.SetPreparing("Preparing NUS3AUDIO normalization...");
-
-                progressWindow = new ScriptProgressModalWindow
-                {
-                    DataContext = progressVm,
-                    Title = "NUS3AUDIO Normalization",
-                    Width = 460,
-                    Height = 180,
-                    MinWidth = 460,
-                    MinHeight = 180,
-                    MaxWidth = 460,
-                    MaxHeight = 180,
-                    CanResize = false,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-
-                progressWindow.Closing += (sender, args) =>
-                {
-                    if (closingProgressWindowProgrammatically)
-                        return;
-
-                    if (!cancellationTokenSource.IsCancellationRequested)
-                    {
-                        userCancelled = true;
-                        cancellationTokenSource.Cancel();
-                    }
-                };
-
-                progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
-
-                result = await _nus3AudioBatchNormalizationService.NormalizeFiles(
-                    files,
-                    musicModsPath,
-                    (current, total, currentFile) =>
-                    {
-                        Dispatcher.UIThread.Post(() =>
-                        {
-                            progressVm.SetProgress(
-                                "Normalizing NUS3AUDIO files",
-                                currentFile,
-                                current,
-                                total
-                            );
-                        });
-                    },
-                    cancellationTokenSource.Token
-                );
-            }
-            catch (OperationCanceledException)
-            {
-                userCancelled = true;
-            }
-            catch (Exception e)
-            {
-                await _messageDialog.ShowError("NUS3AUDIO normalization failed", e.Message, e);
-                return;
-            }
-            finally
-            {
-                if (progressWindow != null)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        closingProgressWindowProgrammatically = true;
-
-                        if (progressWindow.IsVisible)
-                            progressWindow.Close();
-                    });
-                }
-
-                if (progressDialogTask != null)
-                    await progressDialogTask;
-            }
-
-            if (userCancelled)
-            {
-                await _messageDialog.ShowInformation(
-                    "NUS3AUDIO normalization cancelled",
-                    result == null
-                        ? "The operation was cancelled."
-                        : $"The operation was cancelled.\r\nNormalized files before cancellation: {result.NormalizedFiles}/{files.Count}."
-                );
-                return;
-            }
-
-            if (result == null)
-                return;
-
-            if (result.FailedFiles.Count > 0)
-            {
-                await _messageDialog.ShowError(
-                    "NUS3AUDIO normalization completed with errors",
-                    $"Normalized files: {result.NormalizedFiles}/{result.TotalFiles}\r\nFailed files: {result.FailedFiles.Count}\r\n\r\nCheck the logs for details."
-                );
-                return;
-            }
-
-            await _messageDialog.ShowInformation(
-                "NUS3AUDIO normalization complete",
-                $"Normalized files: {result.NormalizedFiles}/{result.TotalFiles}."
-            );
-        }
-
         public async Task FixUnknownValues()
         {
             if (await _guiStateManager.FixUnknownValues())
@@ -648,366 +390,7 @@ namespace Sma5hMusic.GUI.ViewModels
         }
         #endregion
 
-        #region YouTube Import
-        public async Task AddNewYoutubeBgmEntry(ModEntryViewModel managerMod)
-        {
-            if (managerMod?.MusicMod == null)
-            {
-                await _messageDialog.ShowError("Error", "The mod could not be found.");
-                return;
-            }
-
-            if (!_youtubeImportService.IsYtDlpConfigured())
-            {
-                await _messageDialog.ShowError(
-                    "yt-dlp is not configured",
-                    "Set the path to yt-dlp.exe in Global Settings before importing songs from YouTube."
-                );
-                return;
-            }
-
-            if (!_youtubeImportService.IsFfmpegConfigured())
-            {
-                await _messageDialog.ShowError(
-                    "ffmpeg is not configured",
-                    "Set the path to ffmpeg.exe in Global Settings before importing songs from YouTube."
-                );
-                return;
-            }
-
-            _vmYoutubeImport.Reset();
-
-            var modalYoutubeImport = new YoutubeImportModalWindow
-            {
-                DataContext = _vmYoutubeImport
-            };
-
-            var result = await modalYoutubeImport.ShowDialog<YoutubeImportModalWindow>(_rootDialog.Window);
-
-            if (result == null)
-                return;
-
-            if (_vmYoutubeImport.ImportFromTextFile)
-            {
-                await AddNewYoutubeBgmEntriesFromTextFile(managerMod);
-                return;
-            }
-
-            bool isPlaylist;
-
-            try
-            {
-                isPlaylist = await _youtubeImportService.IsPlaylist(_vmYoutubeImport.Url);
-            }
-            catch (Exception e)
-            {
-                await _messageDialog.ShowError("YouTube import failed", e.Message, e);
-                return;
-            }
-
-            var links = new List<(string Url, bool IsPlaylist)>()
-            {
-                (_vmYoutubeImport.Url, isPlaylist)
-            };
-
-            await DownloadYoutubeLinksAndImport(managerMod, links, true);
-        }
-
-        private async Task AddNewYoutubeBgmEntriesFromTextFile(ModEntryViewModel managerMod)
-        {
-            var textFile = await _fileDialog.OpenFileDialogYoutubeLinksText(_rootDialog.Window);
-
-            if (string.IsNullOrWhiteSpace(textFile))
-                return;
-
-            List<string> lines;
-
-            try
-            {
-                lines = File.ReadAllLines(textFile)
-                    .Select(p => p.Trim())
-                    .Where(p => !string.IsNullOrWhiteSpace(p))
-                    .ToList();
-            }
-            catch (Exception e)
-            {
-                await _messageDialog.ShowError("YouTube import failed", e.Message, e);
-                return;
-            }
-
-            var links = new List<(string Url, bool IsPlaylist)>();
-            var invalidLinks = 0;
-
-            foreach (var line in lines)
-            {
-                try
-                {
-                    var isPlaylist = await _youtubeImportService.IsPlaylist(line);
-                    links.Add((line, isPlaylist));
-                }
-                catch
-                {
-                    invalidLinks++;
-                }
-            }
-
-            if (links.Count == 0)
-            {
-                await _messageDialog.ShowInformation(
-                    "YouTube import",
-                    "No valid links were found."
-                );
-                return;
-            }
-
-            var singleSongs = links.Count(p => !p.IsPlaylist);
-            var playlists = links.Count(p => p.IsPlaylist);
-
-            var singleSongsText = singleSongs == 1 ? "single song" : "single songs";
-            var playlistsText = playlists == 1 ? "playlist" : "playlists";
-            var invalidLinksText = invalidLinks == 1 ? "invalid link" : "invalid links";
-
-            await _messageDialog.ShowInformation(
-                "YouTube import",
-                $"Found {singleSongs} {singleSongsText}, {playlists} {playlistsText} and {invalidLinks} {invalidLinksText}. Starting download."
-            );
-
-            await DownloadYoutubeLinksAndImport(managerMod, links, false);
-        }
-
-        private async Task DownloadYoutubeLinksAndImport(
-            ModEntryViewModel managerMod,
-            IReadOnlyCollection<(string Url, bool IsPlaylist)> links,
-            bool confirmPlaylists)
-        {
-            if (links == null || links.Count == 0)
-                return;
-
-            YoutubeDownloadProgressModalWindow progressWindow = null;
-            YoutubeDownloadProgressModalWindowViewModel progressVm = null;
-            Task progressDialogTask = null;
-
-            var downloadedFiles = new List<string>();
-            var downloads = new List<YoutubeDownloadResult>();
-            var failedLinks = new List<string>();
-            var totalSongs = 0;
-
-            using var cancellationTokenSource = new CancellationTokenSource();
-
-            var userCancelled = false;
-            var downloadFailed = false;
-            var closingProgressWindowProgrammatically = false;
-
-            try
-            {
-                var hasPlaylist = links.Any(p => p.IsPlaylist);
-
-                if (confirmPlaylists && hasPlaylist)
-                {
-                    var confirm = await _messageDialog.ShowWarningConfirm(
-                        "Input is a playlist",
-                        "Input is a playlist. All songs will be downloaded and processed. Do you want to continue?"
-                    );
-
-                    if (!confirm)
-                        return;
-                }
-
-                foreach (var link in links)
-                {
-                    cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-                    if (link.IsPlaylist)
-                    {
-                        totalSongs += await _youtubeImportService.GetPlaylistItemCount(
-                            link.Url,
-                            cancellationTokenSource.Token
-                        );
-                    }
-                    else
-                    {
-                        totalSongs++;
-                    }
-                }
-
-                if (totalSongs <= 0)
-                    totalSongs = links.Count;
-
-                progressVm = new YoutubeDownloadProgressModalWindowViewModel();
-                progressVm.SetProgress(0, totalSongs);
-
-                progressWindow = new YoutubeDownloadProgressModalWindow
-                {
-                    DataContext = progressVm,
-                    Width = 420,
-                    Height = 170,
-                    MinWidth = 420,
-                    MinHeight = 170,
-                    MaxWidth = 420,
-                    MaxHeight = 170,
-                    CanResize = false,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
-                };
-
-                progressWindow.Closing += (sender, args) =>
-                {
-                    if (closingProgressWindowProgrammatically)
-                        return;
-
-                    if (!cancellationTokenSource.IsCancellationRequested)
-                    {
-                        userCancelled = true;
-                        cancellationTokenSource.Cancel();
-                    }
-                };
-
-                progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
-
-                var completedSongs = 0;
-
-                foreach (var link in links)
-                {
-                    cancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-                    var completedBeforeThisDownload = completedSongs;
-
-                    try
-                    {
-                        var download = await _youtubeImportService.DownloadAudio(
-                            link.Url,
-                            link.IsPlaylist,
-                            totalSongs,
-                            (current, total) =>
-                            {
-                                Dispatcher.UIThread.Post(() =>
-                                {
-                                    progressVm.SetProgress(completedBeforeThisDownload + current, totalSongs);
-                                });
-                            },
-                            cancellationTokenSource.Token
-                        );
-
-                        downloads.Add(download);
-
-                        var files = download.Filenames?
-                            .Where(File.Exists)
-                            .ToList() ?? new List<string>();
-
-                        if (files.Count == 0 && File.Exists(download.Filename))
-                            files.Add(download.Filename);
-
-                        downloadedFiles.AddRange(files);
-
-                        completedSongs += files.Count;
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        throw;
-                    }
-                    catch (Exception e)
-                    {
-                        _logger.LogWarning(e, "YouTube download failed for URL {Url}. Continuing with the next link.", link.Url);
-
-                        failedLinks.Add(link.Url);
-
-                        // Count the failed single song as processed, otherwise the bar can remain stuck at 1/2, 31/32, etc.
-                        if (!link.IsPlaylist)
-                            completedSongs++;
-                    }
-
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        progressVm.SetProgress(Math.Min(completedSongs, totalSongs), totalSongs);
-                    });
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                userCancelled = true;
-            }
-            catch (Exception e)
-            {
-                downloadFailed = true;
-                await _messageDialog.ShowError("YouTube Import failed", e.Message, e);
-                return;
-            }
-            finally
-            {
-                if (progressWindow != null)
-                {
-                    await Dispatcher.UIThread.InvokeAsync(() =>
-                    {
-                        closingProgressWindowProgrammatically = true;
-
-                        if (progressWindow.IsVisible)
-                            progressWindow.Close();
-                    });
-                }
-
-                if (progressDialogTask != null)
-                    await progressDialogTask;
-
-                if (userCancelled || downloadFailed)
-                {
-                    foreach (var download in downloads)
-                        _youtubeImportService.CleanupDownload(download);
-                }
-            }
-
-            if (userCancelled)
-            {
-                await _messageDialog.ShowInformation(
-                    "YouTube Import cancelled",
-                    "The YouTube Download was cancelled."
-                );
-                return;
-            }
-
-            if (downloadedFiles.Count == 0)
-            {
-                if (failedLinks.Count > 0)
-                {
-                    var songText = failedLinks.Count == 1 ? "song" : "songs";
-
-                    await _messageDialog.ShowError(
-                        "YouTube Import Failed",
-                        $"yt-dlp could not find {failedLinks.Count} {songText}. Please check that the link is correct."
-                    );
-                }
-                else
-                {
-                    await _messageDialog.ShowError(
-                        "YouTube Import Failed",
-                        "The YouTube Download completed, but no audio files were found."
-                    );
-                }
-
-                return;
-            }
-
-            if (failedLinks.Count > 0)
-            {
-                var songText = failedLinks.Count == 1 ? "song" : "songs";
-
-                await _messageDialog.ShowError(
-                    "YouTube Import Warning",
-                    $"yt-dlp could not find {failedLinks.Count} {songText}. Please check that the link is correct."
-                );
-            }
-
-            try
-            {
-                await ImportAudioFiles(managerMod, downloadedFiles);
-            }
-            finally
-            {
-                foreach (var download in downloads)
-                    _youtubeImportService.CleanupDownload(download);
-            }
-        }
-
-        #endregion
-
+        #region Data Operations
         #region BGM Operations
         public async Task AddNewBgmEntry(ModEntryViewModel managerMod)
         {
@@ -1025,119 +408,6 @@ namespace Sma5hMusic.GUI.ViewModels
         }
 
 
-
-        private async Task ImportAudioFiles(ModEntryViewModel managerMod, IReadOnlyCollection<string> inputFiles)
-        {
-            //TODO - Handle anything saving in a specific service
-            _logger.LogInformation("Adding {NbrFiles} files to Mod {ModPath}", inputFiles.Count, managerMod.ModPath);
-            foreach (var inputFile in inputFiles)
-            {
-                _vmToneIdCreation.Filename = inputFile;
-                _vmToneIdCreation.LoadToneId(Path.GetFileNameWithoutExtension(inputFile));
-
-                var requiresConversion = _audioImportService.RequiresConversion(inputFile);
-                var isNus3Audio = _audioImportService.IsNus3Audio(inputFile);
-
-                if (requiresConversion)
-                {
-                    try
-                    {
-                        var audioInfo = await _audioImportService.GetAudioInfo(inputFile);
-                        _vmToneIdCreation.LoadAudioImportInfo(audioInfo.SampleRate, audioInfo.TotalSamples);
-                    }
-                    catch (Exception e)
-                    {
-                        await _messageDialog.ShowError("Audio import failed", e.Message, e);
-                        continue;
-                    }
-                }
-                else if (isNus3Audio)
-                {
-                    _vmToneIdCreation.LoadNus3AudioImportInfo();
-                }
-                else
-                {
-                    _vmToneIdCreation.ClearAudioImportInfo();
-                }
-
-
-                var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
-                var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);
-                if (result != null)
-                {
-                    string toneId = _vmToneIdCreation.ToneId;
-                    var importFile = inputFile;
-                    var applyNormalization = _vmToneIdCreation.ApplyNormalization;
-
-                    if (applyNormalization && !_audioImportService.IsFfmpegConfigured())
-                    {
-                        await _messageDialog.ShowInformation(
-                            "Audio normalization skipped",
-                            "ffmpeg is not configured. The song will be imported without normalization."
-                        );
-
-                        applyNormalization = false;
-                    }
-
-                    if (requiresConversion)
-                    {
-                        try
-                        {
-                            IsLoading = true;
-                            IsShowingDebug = true;
-
-                            importFile = await _audioImportService.ConvertToNus3Audio(
-                                toneId,
-                                inputFile,
-                                managerMod.ModPath,
-                                _vmToneIdCreation.LoopStartSample,
-                                _vmToneIdCreation.LoopEndSample,
-                                applyNormalization);
-                        }
-                        catch (Exception e)
-                        {
-                            await _messageDialog.ShowError("Audio import failed", e.Message, e);
-                            continue;
-                        }
-                        finally
-                        {
-                            IsLoading = false;
-                            IsShowingDebug = false;
-                        }
-                    }
-                    else if (isNus3Audio && applyNormalization)
-                    {
-                        try
-                        {
-                            IsLoading = true;
-                            IsShowingDebug = true;
-
-                            importFile = await _audioImportService.NormalizeNus3Audio(
-                                toneId,
-                                inputFile,
-                                managerMod.ModPath);
-                        }
-                        catch (Exception e)
-                        {
-                            await _messageDialog.ShowError("Audio import failed", e.Message, e);
-                            continue;
-                        }
-                        finally
-                        {
-                            IsLoading = false;
-                            IsShowingDebug = false;
-                        }
-                    }
-
-                    var uiBgmId = await _guiStateManager.CreateNewMusicModFromToneId(toneId, importFile, managerMod.MusicMod);
-                    if (!string.IsNullOrEmpty(uiBgmId))
-                    {
-                        var vmBgmDbRootEntry = _viewModelManager.GetBgmDbRootViewModel(uiBgmId);
-                        await EditBgmEntry(vmBgmDbRootEntry);
-                    }
-                }
-            }
-        }
 
         public async Task EditBgmEntry(BgmDbRootEntryViewModel vmBgmEntry)
         {
@@ -1343,6 +613,7 @@ namespace Sma5hMusic.GUI.ViewModels
                 await _guiStateManager.PersistStageChanges();
             }
         }
+        #endregion
         #endregion
     }
 }

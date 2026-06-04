@@ -69,6 +69,8 @@ namespace Sma5hMusic.GUI.ViewModels
         public bool HideModColumn { get; set; }
         [Reactive]
         public double AudioNormalizationTargetLufs { get; set; }
+        [Reactive]
+        public uint LoopPreviewSeconds { get; set; }
 
         public ApplicationSettings GetReference()
         {

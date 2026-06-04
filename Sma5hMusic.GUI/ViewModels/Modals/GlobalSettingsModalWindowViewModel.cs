@@ -168,6 +168,9 @@ namespace Sma5hMusic.GUI.ViewModels
 
             if (item != null && item.AudioNormalizationTargetLufs <= 0)
                 item.AudioNormalizationTargetLufs = 14;
+
+            if (item != null && (item.LoopPreviewSeconds < 2 || item.LoopPreviewSeconds > 10))
+                item.LoopPreviewSeconds = 6;
         }
 
         protected override Task<bool> SaveChanges()

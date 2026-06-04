@@ -44,6 +44,8 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                     SkipWarningGameVersion = p.SkipWarningGameVersion,
                     AutoBackupAtStart = p.AutoBackupAtStart,
                     InGameVolume = p.InGameVolume,
+                    AudioNormalizationTargetLufs = p.AudioNormalizationTargetLufs,
+                    LoopPreviewSeconds = p.LoopPreviewSeconds,
                     HideIndexColumn = p.HideIndexColumn,
                     HideModColumn = p.HideModColumn,
                     HideRecordColumn = p.HideRecordColumn,
@@ -83,6 +85,8 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.SkipWarningGameVersion, me => me.MapFrom(p => p.Sma5hMusicGUI.SkipWarningGameVersion))
                 .ForMember(i => i.AutoBackupAtStart, me => me.MapFrom(p => p.Sma5hMusicGUI.AutoBackupAtStart))
                 .ForMember(i => i.InGameVolume, me => me.MapFrom(p => p.Sma5hMusicGUI.InGameVolume))
+                .ForMember(i => i.AudioNormalizationTargetLufs, me => me.MapFrom(p => p.Sma5hMusicGUI.AudioNormalizationTargetLufs))
+                .ForMember(i => i.LoopPreviewSeconds, me => me.MapFrom(p => p.Sma5hMusicGUI.LoopPreviewSeconds))
                 .ForMember(i => i.HideIndexColumn, me => me.MapFrom(p => p.Sma5hMusicGUI.HideIndexColumn))
                 .ForMember(i => i.HideModColumn, me => me.MapFrom(p => p.Sma5hMusicGUI.HideModColumn))
                 .ForMember(i => i.HideRecordColumn, me => me.MapFrom(p => p.Sma5hMusicGUI.HideRecordColumn))
