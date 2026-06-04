@@ -51,6 +51,9 @@ namespace Sma5hMusic.GUI.ViewModels
             AutoLoopPoints = new ObservableCollection<AutoLoopPoint>();
 
             //Bind observables
+            this.WhenAnyValue(x => x.IsAudioImport)
+                .Subscribe(_ => this.RaisePropertyChanged(nameof(WindowTitle)));
+
             viewModelManager.ObservableBgmPropertyEntries.Connect()
                .ObserveOn(RxApp.MainThreadScheduler)
                .Bind(out _bgmPropertyEntries)

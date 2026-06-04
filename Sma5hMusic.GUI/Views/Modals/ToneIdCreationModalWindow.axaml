@@ -7,10 +7,10 @@
         x:Class="Sma5hMusic.GUI.Views.ToneIdCreationModalWindow"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
-        Title="Tone Id">
+        Title="{Binding WindowTitle}">
   <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
     <Border Classes="headerTitle" DockPanel.Dock="Top">
-      <TextBlock>Choose a Tone ID</TextBlock>
+      <TextBlock Text="{Binding WindowTitle}" />
     </Border>
 
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#404040" Padding="0,8,0,8">

@@ -104,7 +104,7 @@
     </Menu>
     <DockPanel Grid.Row="1">
       <Image Classes="logo" Source="/Assets/smash_logo.png"/>
-      <TextBlock DockPanel.Dock="Left" Classes="title">Sma5h Music</TextBlock>
+      <TextBlock DockPanel.Dock="Left" Classes="title">Sma5hMusic Extra</TextBlock>
       <TabStrip DockPanel.Dock="Right" Name="TabsMenu" HorizontalAlignment="Right" Margin="10">
         <TabStripItem Content="Songs"/>
         <TabStripItem Content="Playlists"/>

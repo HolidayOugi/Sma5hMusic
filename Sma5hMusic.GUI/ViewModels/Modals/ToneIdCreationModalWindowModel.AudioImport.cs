@@ -15,6 +15,8 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public bool IsAudioImport { get; set; }
 
+        public string WindowTitle => IsAudioImport ? "Choose Loops" : "Choose a Tone ID";
+
         [Reactive]
         public bool CanApplyNormalization { get; set; }
 
