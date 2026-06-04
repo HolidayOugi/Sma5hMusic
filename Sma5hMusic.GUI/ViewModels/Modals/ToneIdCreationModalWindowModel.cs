@@ -45,6 +45,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Window, Unit> ActionCreate { get; }
         public ReactiveCommand<Unit, Unit> ActionPreviewLoop { get; }
         public ReactiveCommand<Unit, Unit> ActionStopPreview { get; }
+        public ReactiveCommand<Unit, Unit> ActionResetLoopDefaults { get; }
         public ReactiveCommand<Unit, Unit> ActionCalculateAutoLoops { get; }
         public ReactiveCommand<Unit, Unit> ActionLoadMoreAutoLoops { get; }
         public ReactiveCommand<AutoLoopPoint, Unit> ActionPreviewAutoLoop { get; }
@@ -230,6 +231,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionCreate = ReactiveCommand.Create<Window>(Select, canExecute);
             ActionPreviewLoop = ReactiveCommand.CreateFromTask(PreviewLoop, canPreview);
             ActionStopPreview = ReactiveCommand.CreateFromTask(StopPreview);
+            ActionResetLoopDefaults = ReactiveCommand.Create(ResetLoopDefaults);
             ActionCalculateAutoLoops = ReactiveCommand.CreateFromTask(CalculateAutoLoops, canCalculateAutoLoops);
             ActionLoadMoreAutoLoops = ReactiveCommand.Create(LoadMoreAutoLoops);
             ActionPreviewAutoLoop = ReactiveCommand.CreateFromTask<AutoLoopPoint>(PreviewAutoLoop);
@@ -659,6 +661,16 @@ namespace Sma5hMusic.GUI.ViewModels
             }
 
             return _loopPreviewInfo.FirstSegmentSourceStartSample + Convert48kSamplesToSourceSamples(previewSample);
+        }
+
+        private void ResetLoopDefaults()
+        {
+            if (!IsAudioImport)
+                return;
+
+            LoopStartSample = 0;
+            LoopEndSample = TotalSamples;
+            SelectedAutoLoop = null;
         }
 
         private uint Convert48kSamplesToSourceSamples(uint samples)
