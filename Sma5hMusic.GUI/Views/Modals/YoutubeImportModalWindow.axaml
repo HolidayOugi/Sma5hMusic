@@ -33,7 +33,7 @@
           IsRequired="True"/>
 
       <Button
-          Content="Load Youtube links from .txt file"
+          Content="Load YouTube links from .txt file"
           Command="{Binding ActionImportFromTextFile}"
           CommandParameter="{Binding $parent[Window]}"
           HorizontalAlignment="Center"

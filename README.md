@@ -74,7 +74,7 @@ Songs can now be directly downloaded from **YouTube** and added to the software 
 
 The songs can be imported either from their URL or from a text file containing all of the links, one per line.
 
-![YouTube](https://elixi.re/i/tuqzu.png)
+![YouTube](https://elixi.re/i/ygkah.png)
 
 > [!TIP]
 > Playlists are also supported. The software notifies the user that all the songs from a given playlist will be downloaded.
