@@ -29,13 +29,16 @@ namespace Sma5hMusic.GUI.Services
                 _logger.LogInformation("Automatic loop point calculation completed. File={Filename}, ParsedCandidates={CandidateCount}.",
                     filename, loopPoints.Count);
 
-                foreach (var loopPoint in loopPoints)
+                foreach (var loopPoint in loopPoints.Take(15))
                 {
                     _logger.LogInformation("Automatic loop candidate #{Rank}: Start={LoopStartSample}, End={LoopEndSample}, Score={Score}, NoteDifference={NoteDifference}, LoudnessDifference={LoudnessDifference}, StartTime={StartMinutes}:{StartSeconds}.{StartMilliseconds}, EndTime={EndMinutes}:{EndSeconds}.{EndMilliseconds}.",
                         loopPoint.Rank, loopPoint.LoopStartSample, loopPoint.LoopEndSample, loopPoint.Score, loopPoint.NoteDifference, loopPoint.LoudnessDifference,
                         loopPoint.LoopStartMinutes, loopPoint.LoopStartSeconds, loopPoint.LoopStartMilliseconds,
                         loopPoint.LoopEndMinutes, loopPoint.LoopEndSeconds, loopPoint.LoopEndMilliseconds);
                 }
+
+                if (loopPoints.Count > 15)
+                    _logger.LogInformation("Additional automatic loop candidates omitted from log. OmittedCandidates={OmittedCandidates}.", loopPoints.Count - 15);
 
                 return loopPoints;
             });
@@ -65,6 +68,7 @@ namespace Sma5hMusic.GUI.Services
                 var restartWavFile = Path.Combine(GetTempPath(), $"{tempId}_restart.wav");
                 var endingWavFile = Path.Combine(GetTempPath(), $"{tempId}_ending.wav");
                 var previewFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
+                var soxInputFile = CreateSoxCompatibleInputCopy(filename);
 
                 try
                 {
@@ -82,7 +86,7 @@ namespace Sma5hMusic.GUI.Services
 
                     _logger.LogInformation("Creating full 48kHz WAV for loop preview before trimming. Input={InputFile}, Output={SourceWavFile}.",
                         filename, sourceWavFile);
-                    RunTool(GetSoxExe(), filename, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", sourceWavFile);
+                    RunTool(GetSoxExe(), soxInputFile, "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture), "-b", "16", "-e", "signed-integer", sourceWavFile);
 
                     ExtractWavSegment(sourceWavFile, endingWavFile, requestedPreviewStart48k, loopEnd48k - requestedPreviewStart48k, TargetSampleRate);
                     ExtractWavSegment(sourceWavFile, restartWavFile, loopStart48k, restartPreviewDuration48k, TargetSampleRate);
@@ -106,6 +110,7 @@ namespace Sma5hMusic.GUI.Services
                 }
                 finally
                 {
+                    DeleteSoxCompatibleInputCopy(filename, soxInputFile);
                     DeleteTempFile(sourceWavFile);
                     DeleteTempFile(tempWavFile);
                     DeleteTempFile(restartWavFile);
@@ -213,24 +218,36 @@ namespace Sma5hMusic.GUI.Services
             var error = process.StandardError.ReadToEnd();
             process.WaitForExit();
 
-            _logger.LogInformation("Command exited: {Executable}. ExitCode={ExitCode}. StdOut={StdOut}. StdErr={StdErr}",
-                executable, process.ExitCode, output, error);
+            _logger.LogInformation("Command exited: {Executable}. ExitCode={ExitCode}. StdOutLength={StdOutLength}. StdErrLength={StdErrLength}.",
+                executable, process.ExitCode, output.Length, error.Length);
 
             if (process.ExitCode != 0)
-                throw new InvalidOperationException($"{executable} failed: {error}{output}");
+                throw new InvalidOperationException($"{executable} failed: {GetCommandErrorExcerpt(error, output)}");
 
             return string.Join(Environment.NewLine, new[] { output, error }.Where(p => !string.IsNullOrWhiteSpace(p)));
+        }
+
+        private static string GetCommandErrorExcerpt(params string[] messages)
+        {
+            const int maxLength = 4_000;
+            var message = string.Join(Environment.NewLine, messages.Where(p => !string.IsNullOrWhiteSpace(p)));
+
+            if (message.Length <= maxLength)
+                return message;
+
+            return "[Earlier command output omitted]" + Environment.NewLine + message.Substring(message.Length - maxLength);
         }
 
         private IReadOnlyList<AutoLoopPoint> ParsePymusiclooperOutput(string output, uint sampleRate, uint totalSamples)
         {
             var candidates = new List<AutoLoopPoint>();
             var lines = output.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+            var skippedNonDataLines = 0;
+            var skippedInvalidSampleLines = 0;
 
             foreach (var line in lines)
             {
                 var trimmedLine = line.Trim();
-                _logger.LogDebug("Parsing pymusiclooper output line: {Line}", trimmedLine);
 
                 var values = Regex.Matches(trimmedLine, @"[-+]?\d+(?:[.,]\d+)?")
                     .Cast<Match>()
@@ -239,21 +256,20 @@ namespace Sma5hMusic.GUI.Services
 
                 if (values.Count < 2)
                 {
-                    _logger.LogDebug("Skipping pymusiclooper line because it has fewer than two numeric values: {Line}", trimmedLine);
+                    skippedNonDataLines++;
                     continue;
                 }
 
                 if (!uint.TryParse(values[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out var loopStartSample) ||
                     !uint.TryParse(values[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out var loopEndSample))
                 {
-                    _logger.LogDebug("Skipping pymusiclooper line because start/end samples could not be parsed: {Line}", trimmedLine);
+                    skippedInvalidSampleLines++;
                     continue;
                 }
 
                 if (loopEndSample == 0 || loopStartSample > loopEndSample || loopEndSample > totalSamples)
                 {
-                    _logger.LogDebug("Skipping pymusiclooper line because samples are outside the valid range. Line={Line}, Start={Start}, End={End}, TotalSamples={TotalSamples}",
-                        trimmedLine, loopStartSample, loopEndSample, totalSamples);
+                    skippedInvalidSampleLines++;
                     continue;
                 }
 
@@ -271,7 +287,7 @@ namespace Sma5hMusic.GUI.Services
                     NoteDifference = noteDifference,
                     LoudnessDifference = loudnessDifference,
                     Score = scorePercentage,
-                    ScoreText = $"{scorePercentage:0.##}%",
+                    ScoreText = scorePercentage == 100 ? "100%" : $"{scorePercentage:0.00}%",
                     LoopStartTimeText = FormatTime(startMinutes, startSeconds, startMilliseconds),
                     LoopEndTimeText = FormatTime(endMinutes, endSeconds, endMilliseconds),
                     LoopStartMinutes = startMinutes,
@@ -282,6 +298,10 @@ namespace Sma5hMusic.GUI.Services
                     LoopEndMilliseconds = endMilliseconds
                 });
             }
+
+            _logger.LogInformation(
+                "Parsed pymusiclooper output. Lines={LineCount}, ValidCandidates={ValidCandidateCount}, SkippedNonDataLines={SkippedNonDataLines}, SkippedInvalidSampleLines={SkippedInvalidSampleLines}.",
+                lines.Length, candidates.Count, skippedNonDataLines, skippedInvalidSampleLines);
 
             var rankedCandidates = candidates
                 .GroupBy(p => new { p.LoopStartSample, p.LoopEndSample })

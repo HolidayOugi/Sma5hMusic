@@ -53,6 +53,7 @@ namespace Sma5hMusic.GUI
                 : Path.Combine(Directory.GetCurrentDirectory(), tempPath);
 
             TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "AudioImport"));
+            TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "AudioMetadata"));
             TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "YoutubeImport"));
             TempDirectoryHelper.DeleteContents(Path.Combine(fullTempPath, "Nus3AudioBatchNormalization"));
 

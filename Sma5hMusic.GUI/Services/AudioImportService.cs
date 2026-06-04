@@ -21,7 +21,7 @@ namespace Sma5hMusic.GUI.Services
         private const uint TargetSampleRate = 48_000;
         private static readonly string[] SourceAudioExtensions =
         {
-            ".mp3", ".flac", ".wav", ".ogg", ".m4a", ".aac", ".aiff", ".aif", ".wma"
+            ".mp3", ".flac", ".wav", ".ogg", ".m4a"
         };
 
         private readonly IOptionsMonitor<ApplicationSettings> _config;
@@ -44,18 +44,26 @@ namespace Sma5hMusic.GUI.Services
             return await Task.Run(() =>
             {
                 Directory.CreateDirectory(GetTempPath());
+                var soxInputFile = CreateSoxCompatibleInputCopy(filename);
 
-                var sampleRate = ReadUInt(RunTool(GetSoxExe(), "--i", "-r", filename), "sample rate", filename);
-                var totalSamples = TryReadTotalSamples(filename);
-
-                if (totalSamples == 0)
-                    throw new InvalidOperationException($"Could not determine the total sample count for '{Path.GetFileName(filename)}'.");
-
-                return new AudioImportInfo
+                try
                 {
-                    SampleRate = sampleRate,
-                    TotalSamples = totalSamples
-                };
+                    var sampleRate = ReadUInt(RunTool(GetSoxExe(), "--i", "-r", soxInputFile), "sample rate", filename);
+                    var totalSamples = TryReadTotalSamples(soxInputFile);
+
+                    if (totalSamples == 0)
+                        throw new InvalidOperationException($"Could not determine the total sample count for '{Path.GetFileName(filename)}'.");
+
+                    return new AudioImportInfo
+                    {
+                        SampleRate = sampleRate,
+                        TotalSamples = totalSamples
+                    };
+                }
+                finally
+                {
+                    DeleteSoxCompatibleInputCopy(filename, soxInputFile);
+                }
             });
         }
 
@@ -80,14 +88,6 @@ namespace Sma5hMusic.GUI.Services
                 if (!RequiresConversion(filename))
                     return filename;
 
-                var info = GetAudioInfo(filename).GetAwaiter().GetResult();
-
-                if (loopEndSample == 0 || loopEndSample > info.TotalSamples)
-                    throw new InvalidOperationException($"Loop end sample must be between 1 and {info.TotalSamples}.");
-
-                if (loopStartSample > loopEndSample)
-                    throw new InvalidOperationException("Loop start sample must be lower than or equal to loop end sample.");
-
                 Directory.CreateDirectory(modPath);
                 Directory.CreateDirectory(GetTempPath());
 
@@ -100,8 +100,18 @@ namespace Sma5hMusic.GUI.Services
                 if (File.Exists(outputFile))
                     throw new InvalidOperationException($"The destination file '{Path.GetFileName(outputFile)}' already exists in the selected mod.");
 
+                var soxInputFile = CreateSoxCompatibleInputCopy(filename);
+
                 try
                 {
+                    var info = GetAudioInfo(soxInputFile).GetAwaiter().GetResult();
+
+                    if (loopEndSample == 0 || loopEndSample > info.TotalSamples)
+                        throw new InvalidOperationException($"Loop end sample must be between 1 and {info.TotalSamples}.");
+
+                    if (loopStartSample > loopEndSample)
+                        throw new InvalidOperationException("Loop start sample must be lower than or equal to loop end sample.");
+
                     var totalSamples48k = ConvertSampleRate(info.TotalSamples, info.SampleRate);
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
@@ -120,7 +130,7 @@ namespace Sma5hMusic.GUI.Services
                             targetLufs
                         );
 
-                        NormalizeAudioToWav(filename, tempNormalizedWavFile, targetLufs);
+                        NormalizeAudioToWav(soxInputFile, tempNormalizedWavFile, targetLufs);
 
                         File.Copy(tempNormalizedWavFile, tempWavFile, true);
                     }
@@ -130,7 +140,7 @@ namespace Sma5hMusic.GUI.Services
 
                         RunTool(
                             GetSoxExe(),
-                            filename,
+                            soxInputFile,
                             "-r", TargetSampleRate.ToString(CultureInfo.InvariantCulture),
                             "-b", "16",
                             "-e", "signed-integer",
@@ -160,6 +170,7 @@ namespace Sma5hMusic.GUI.Services
                 }
                 finally
                 {
+                    DeleteSoxCompatibleInputCopy(filename, soxInputFile);
                     DeleteTempFile(tempNormalizedWavFile);
                     DeleteTempFile(tempWavFile);
                     DeleteTempFile(tempLopusFile);
@@ -298,6 +309,32 @@ namespace Sma5hMusic.GUI.Services
         private string GetTempPath()
         {
             return Path.Combine(_config.CurrentValue.TempPath, "AudioImport");
+        }
+
+        private string CreateSoxCompatibleInputCopy(string filename)
+        {
+            if (!filename.Any(p => p > 127))
+                return filename;
+
+            Directory.CreateDirectory(GetTempPath());
+
+            var extension = Path.GetExtension(filename);
+            var tempFilename = Path.Combine(GetTempPath(), $"{Guid.NewGuid():N}_source{extension}");
+
+            _logger.LogInformation(
+                "Copying audio source to a SoX-compatible temporary path. Original={OriginalFile}, Temporary={TemporaryFile}.",
+                filename,
+                tempFilename
+            );
+
+            File.Copy(filename, tempFilename);
+            return tempFilename;
+        }
+
+        private static void DeleteSoxCompatibleInputCopy(string originalFilename, string inputFilename)
+        {
+            if (!string.Equals(originalFilename, inputFilename, StringComparison.OrdinalIgnoreCase))
+                DeleteTempFile(inputFilename);
         }
 
         private static void DeleteTempFile(string filename)

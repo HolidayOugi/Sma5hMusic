@@ -1234,25 +1234,64 @@ namespace Sma5hMusic.GUI.Services
 
         public async Task<AudioCuePoints> UpdateAudioCuePoints(string filename)
         {
-            //Calculate cues
-            var audioCuePoints = await _audioMetadataService.GetCuePoints(filename);
-            if (audioCuePoints == null || audioCuePoints.TotalSamples <= 0)
+            var metadataFilename = CreateAudioMetadataCompatibleInputCopy(filename);
+            try
             {
-                await Dispatcher.UIThread.InvokeAsync(async () =>
+                //Calculate cues
+                var audioCuePoints = await _audioMetadataService.GetCuePoints(metadataFilename);
+                if (audioCuePoints == null || audioCuePoints.TotalSamples <= 0)
                 {
-                    await _messageDialog.ShowError("Update Audio Cue Points", $"The filename {filename} didn't have cue points. Make sure audio library is properly installed.");
-                }, DispatcherPriority.Background);
-                return null;
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        await _messageDialog.ShowError("Update Audio Cue Points", $"The filename {filename} didn't have cue points. Make sure audio library is properly installed.");
+                    }, DispatcherPriority.Background);
+                    return null;
+                }
+                if (audioCuePoints.Frequency < 32000)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        await _messageDialog.ShowError("Update Audio Cue Points", $"The frequency of the audio file {filename} must be at least 32Khz.");
+                    }, DispatcherPriority.Background);
+                    return null;
+                }
+                return audioCuePoints;
             }
-            if (audioCuePoints.Frequency < 32000)
+            finally
             {
-                await Dispatcher.UIThread.InvokeAsync(async () =>
-                {
-                    await _messageDialog.ShowError("Update Audio Cue Points", $"The frequency of the audio file {filename} must be at least 32Khz.");
-                }, DispatcherPriority.Background);
-                return null;
+                DeleteAudioMetadataCompatibleInputCopy(filename, metadataFilename);
             }
-            return audioCuePoints;
+        }
+
+        private string CreateAudioMetadataCompatibleInputCopy(string filename)
+        {
+            if (!filename.Any(character => character > 127))
+                return filename;
+
+            var tempPath = Path.Combine(_config.CurrentValue.TempPath, "AudioMetadata");
+            Directory.CreateDirectory(tempPath);
+
+            var tempFilename = Path.Combine(tempPath, $"{Guid.NewGuid():N}_source{Path.GetExtension(filename)}");
+            _logger.LogInformation("Copying audio file with non-ASCII path to temporary metadata path. Source: {SourceFilename}, Temporary: {TemporaryFilename}",
+                filename, tempFilename);
+            File.Copy(filename, tempFilename);
+            return tempFilename;
+        }
+
+        private void DeleteAudioMetadataCompatibleInputCopy(string originalFilename, string metadataFilename)
+        {
+            if (string.Equals(originalFilename, metadataFilename, StringComparison.Ordinal))
+                return;
+
+            try
+            {
+                if (File.Exists(metadataFilename))
+                    File.Delete(metadataFilename);
+            }
+            catch (Exception e)
+            {
+                _logger.LogWarning(e, "Could not delete temporary audio metadata file {Filename}", metadataFilename);
+            }
         }
 
         public string GameVersion

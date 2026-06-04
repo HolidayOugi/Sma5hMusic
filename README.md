@@ -81,6 +81,7 @@ The songs can be imported either from their URL or from a text file containing a
 * (*Should have*) fixed bug where songs would stop playing in-game due to their order in the global song list.
 * Packs now are output in a subfolder of the build folder.
 * If a song from custom Series was not manually added to a playlist, the software will automatically add it to the Battlefield playlist to ensure it shows up in-game.
+* Fixed importing of files with Japanese characters.
 
 ## Thanks & Repos of the different tools
 1.  Original Code and Author: Deinonychus71

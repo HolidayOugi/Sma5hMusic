@@ -155,7 +155,8 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public void LoadToneId(string toneId)
         {
-            ToneId = Regex.Replace(toneId.Replace(" ", "_"), REGEX_REPLACE, string.Empty).ToLower();
+            var sanitizedToneId = Regex.Replace(toneId.Replace(" ", "_"), REGEX_REPLACE, string.Empty).ToLower();
+            ToneId = string.IsNullOrEmpty(sanitizedToneId) ? Guid.NewGuid().ToString("N") : sanitizedToneId;
         }
 
         private async void Cancel(Window w)

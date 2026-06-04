@@ -232,10 +232,7 @@ namespace Sma5hMusic.GUI.ViewModels
                     {
                         try
                         {
-                            IsLoading = true;
-                            IsShowingDebug = true;
-
-                            importFile = await _audioImportService.ConvertToNus3Audio(
+                            importFile = await ConvertAudioFileWithProgress(
                                 toneId,
                                 inputFile,
                                 managerMod.ModPath,
@@ -247,11 +244,6 @@ namespace Sma5hMusic.GUI.ViewModels
                         {
                             await _messageDialog.ShowError("Audio import failed", e.Message, e);
                             continue;
-                        }
-                        finally
-                        {
-                            IsLoading = false;
-                            IsShowingDebug = false;
                         }
                     }
                     else if (isNus3Audio && applyNormalization)
@@ -285,6 +277,58 @@ namespace Sma5hMusic.GUI.ViewModels
                         await EditBgmEntry(vmBgmDbRootEntry);
                     }
                 }
+            }
+        }
+
+        private async Task<string> ConvertAudioFileWithProgress(
+            string toneId,
+            string inputFile,
+            string modPath,
+            uint loopStartSample,
+            uint loopEndSample,
+            bool applyNormalization)
+        {
+            var progressVm = new AudioConversionProgressModalWindowViewModel();
+            progressVm.SetConverting(Path.GetFileName(inputFile));
+
+            var progressWindow = new AudioConversionProgressModalWindow
+            {
+                DataContext = progressVm
+            };
+
+            var closingProgrammatically = false;
+            progressWindow.Closing += (sender, args) =>
+            {
+                if (!closingProgrammatically)
+                    args.Cancel = true;
+            };
+
+            var progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
+
+            try
+            {
+                var result = await _audioImportService.ConvertToNus3Audio(
+                    toneId,
+                    inputFile,
+                    modPath,
+                    loopStartSample,
+                    loopEndSample,
+                    applyNormalization);
+
+                progressVm.SetComplete();
+                return result;
+            }
+            finally
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    closingProgrammatically = true;
+
+                    if (progressWindow.IsVisible)
+                        progressWindow.Close();
+                });
+
+                await progressDialogTask;
             }
         }
     }

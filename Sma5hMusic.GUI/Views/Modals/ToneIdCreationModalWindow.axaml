@@ -28,7 +28,7 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel x:Name="ModalContent" Classes="content" MaxWidth="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
-        <fields:PropertyTextField Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
+        <fields:PropertyTextField Classes="jpnSupport" Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
         <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
 
         <StackPanel IsVisible="{Binding IsAudioImport}">
@@ -84,15 +84,40 @@
                       MaxWidth="{Binding Bounds.Width, ElementName=ModalContent}"
                       HorizontalAlignment="Center"
                       Margin="0,8,0,0"
+                      CanUserSortColumns="False"
                       IsReadOnly="True">
               <DataGrid.Styles>
                 <Style Selector="DataGridColumnHeader">
-                  <Setter Property="HorizontalContentAlignment" Value="Center" />
+                  <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                  <Setter Property="VerticalContentAlignment" Value="Center" />
+                  <Setter Property="Padding" Value="0" />
+                  <Setter Property="Template">
+                    <ControlTemplate>
+                      <Grid Name="PART_ColumnHeaderRoot"
+                            ColumnDefinitions="*,Auto"
+                            Background="{TemplateBinding Background}">
+                        <ContentPresenter Content="{TemplateBinding Content}"
+                                          ContentTemplate="{TemplateBinding ContentTemplate}"
+                                          Margin="{TemplateBinding Padding}"
+                                          HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                          VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
+                        <Rectangle Name="VerticalSeparator"
+                                   Grid.Column="1"
+                                   Width="1"
+                                   VerticalAlignment="Stretch"
+                                   Fill="{TemplateBinding SeparatorBrush}"
+                                   IsVisible="{TemplateBinding AreSeparatorsVisible}" />
+                      </Grid>
+                    </ControlTemplate>
+                  </Setter>
                 </Style>
               </DataGrid.Styles>
 
               <DataGrid.Columns>
-                <DataGridTemplateColumn Header="#" Width="56">
+                <DataGridTemplateColumn Width="56">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="#" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding RankText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -100,7 +125,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Start samples" Width="1.05*">
+                <DataGridTemplateColumn Width="1.05*">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="Start samples" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding LoopStartSample, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -108,7 +136,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="End samples" Width="1.05*">
+                <DataGridTemplateColumn Width="1.05*">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="End samples" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding LoopEndSample, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -116,7 +147,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Start" Width="1.35*">
+                <DataGridTemplateColumn Width="1.35*">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="Start" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding LoopStartTimeText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -124,7 +158,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="End" Width="1.35*">
+                <DataGridTemplateColumn Width="1.35*">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="End" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding LoopEndTimeText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -132,7 +169,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="%" Width="70">
+                <DataGridTemplateColumn Width="70">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="%" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <TextBlock Text="{Binding ScoreText, Mode=OneWay}" HorizontalAlignment="Stretch" TextAlignment="Center" VerticalAlignment="Center" />
@@ -140,7 +180,10 @@
                   </DataGridTemplateColumn.CellTemplate>
                 </DataGridTemplateColumn>
 
-                <DataGridTemplateColumn Header="Preview" Width="90">
+                <DataGridTemplateColumn Width="90">
+                  <DataGridTemplateColumn.Header>
+                    <TextBlock Text="Preview" HorizontalAlignment="Stretch" TextAlignment="Center" />
+                  </DataGridTemplateColumn.Header>
                   <DataGridTemplateColumn.CellTemplate>
                     <DataTemplate>
                       <Button Content="Preview" HorizontalAlignment="Center" Command="{Binding $parent[DataGrid].DataContext.ActionPreviewAutoLoop, Mode=OneWay}" CommandParameter="{Binding}" />

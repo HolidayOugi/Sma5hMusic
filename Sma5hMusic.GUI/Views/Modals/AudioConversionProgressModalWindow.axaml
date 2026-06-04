@@ -1,0 +1,41 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="Sma5hMusic.GUI.Views.AudioConversionProgressModalWindow"
+        Width="420"
+        Height="180"
+        MinWidth="420"
+        MinHeight="180"
+        MaxWidth="420"
+        MaxHeight="180"
+        CanResize="False"
+        WindowStartupLocation="CenterOwner"
+        Title="Audio Conversion">
+
+  <Grid Margin="20" RowDefinitions="Auto,6,Auto,16,Auto,12,Auto">
+    <TextBlock Grid.Row="0"
+               Text="{Binding Message}"
+               FontSize="16"
+               HorizontalAlignment="Center"
+               TextAlignment="Center" />
+
+    <TextBlock Grid.Row="2"
+               Text="{Binding Filename}"
+               HorizontalAlignment="Center"
+               TextAlignment="Center"
+               TextTrimming="CharacterEllipsis"
+               MaxWidth="360" />
+
+    <ProgressBar Grid.Row="4"
+                 Minimum="0"
+                 Maximum="{Binding Total}"
+                 Value="{Binding Current}"
+                 IsIndeterminate="{Binding IsIndeterminate}"
+                 Height="18" />
+
+    <TextBlock Grid.Row="6"
+               Text="Audio files: 1/1"
+               HorizontalAlignment="Center"
+               FontSize="12"
+               Opacity="0.7" />
+  </Grid>
+</Window>
