@@ -112,7 +112,7 @@ namespace Sma5h.Mods.Music
                 var nusAudioOutputFile = Path.Combine(_config.CurrentValue.OutputPath, "stream;", "sound", "bgm", string.Format(MusicConstants.GameResources.NUS3AUDIO_FILE, bgmPropertyEntry.NameId));
 
                 //We always generate a new Nus3Bank as the internal ID might change
-                _logger.LogInformation("Generating Nus3Bank for {NameId}", bgmPropertyEntry.NameId);
+                _logger.LogInformation("Generating Nus3Bank for {NameId} with volume {Volume}", bgmPropertyEntry.NameId, bgmPropertyEntry.AudioVolume);
                 _nus3AudioService.GenerateNus3Bank(bgmPropertyEntry.NameId, bgmPropertyEntry.AudioVolume, nusBankOutputFile);
 
                 //Test for audio cache

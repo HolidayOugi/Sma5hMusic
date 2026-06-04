@@ -83,6 +83,7 @@ namespace Sma5h.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.NameId, me => me.Ignore())
                 .ForMember(i => i.TotalSamples, me => me.MapFrom(p => p.TotalSamples))
                 .ForMember(i => i.TotalTimeMs, me => me.MapFrom(p => p.TotalTimeMs))
+                .ForMember(i => i.AudioVolume, me => me.Ignore())
                 .ForMember(i => i.Frequency, me => me.Ignore());
 
             CreateMap<BgmDbRootEntry, MusicMods.MusicModModels.BgmDbRootConfig>()

@@ -36,7 +36,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 var nusBankOutputFile = Path.Combine(outputBgmFolder, string.Format(MusicConstants.GameResources.NUS3BANK_FILE, bgmPropertyEntry.NameId));
                 var nusAudioOutputFile = Path.Combine(outputBgmFolder, string.Format(MusicConstants.GameResources.NUS3AUDIO_FILE, bgmPropertyEntry.NameId));
 
-                _logger.LogInformation("Generating Nus3Bank for {NameId}", bgmPropertyEntry.NameId);
+                _logger.LogInformation("Generating Nus3Bank for {NameId} with volume {Volume}", bgmPropertyEntry.NameId, bgmPropertyEntry.AudioVolume);
                 _nus3AudioService.GenerateNus3Bank(bgmPropertyEntry.NameId, bgmPropertyEntry.AudioVolume, nusBankOutputFile);
 
                 if (File.Exists(nusAudioOutputFile))

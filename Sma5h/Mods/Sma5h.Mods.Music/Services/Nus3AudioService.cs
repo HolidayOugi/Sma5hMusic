@@ -123,7 +123,7 @@ namespace Sma5h.Mods.Music.Services
 
         public bool GenerateNus3Bank(string toneId, float volume, string outputMediaFile)
         {
-            _logger.LogDebug("Generate nus3bank {InternalToneName} from {Nus3BankInputFile} to {Nus3BankOutputFile}", toneId, _nus3BankTemplateFile, outputMediaFile);
+            _logger.LogDebug("Generate nus3bank {InternalToneName} with volume {Volume} from {Nus3BankInputFile} to {Nus3BankOutputFile}", toneId, volume, _nus3BankTemplateFile, outputMediaFile);
 
             EnsureRequiredFilesAreFound();
 
@@ -167,7 +167,11 @@ namespace Sma5h.Mods.Music.Services
                     }
                 }
                 Directory.CreateDirectory(Path.GetDirectoryName(outputMediaFile));
-                File.WriteAllBytes(outputMediaFile, memoryStreamWrite.ToArray());
+                var outputBytes = memoryStreamWrite.ToArray();
+                File.WriteAllBytes(outputMediaFile, outputBytes);
+
+                if (found.Length == 3)
+                    _logger.LogDebug("Wrote nus3bank {InternalToneName} volume {Volume} at offset {VolumeOffset}", toneId, BitConverter.ToSingle(outputBytes, found[1] + 4), found[1] + 4);
             }
 
             return true;

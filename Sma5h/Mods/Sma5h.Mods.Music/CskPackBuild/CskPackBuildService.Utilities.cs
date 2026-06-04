@@ -98,8 +98,14 @@ namespace Sma5h.Mods.Music.CskPackBuild
             if (value == null || value.Type == JTokenType.Null)
                 return fallback;
 
+            if (value.Type == JTokenType.Float || value.Type == JTokenType.Integer)
+                return value.Value<float>();
+
             float output;
-            return float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out output) ? output : fallback;
+            if (float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out output))
+                return output;
+
+            return float.TryParse(value.ToString(), NumberStyles.Float, CultureInfo.CurrentCulture, out output) ? output : fallback;
         }
 
         private static bool GetBool(JToken token, string key, bool fallback)
