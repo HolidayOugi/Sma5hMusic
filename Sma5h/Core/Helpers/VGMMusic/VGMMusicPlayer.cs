@@ -20,6 +20,7 @@ namespace VGMMusic
         public int CurrentTime { get { return _reader != null ? _reader.TotalPlayed : 0; } }
         public int CurrentSample { get { return _reader != null ? _reader.TotalPlayedSamples : 0; } }
         public bool Loaded { get { return _reader != null && _reader.FileLoaded; } }
+        public bool ApplyVolume { get; set; }
         public float Volume { get { return _volume; } set { _volume = value; SetVolume(value); } }
         public bool IsPlaying { get; private set; }
 
@@ -125,7 +126,7 @@ namespace VGMMusic
         {
             try
             {
-                if (_outputDevice != null)
+                if (ApplyVolume && _outputDevice != null)
                     _outputDevice.Volume = volume;
             }
             catch (Exception e)
@@ -166,9 +167,10 @@ namespace VGMMusic
                 {
                     _logger.LogInformation("Initializing WaveOutEvent. WaveFormat={WaveFormat}, Position={Position}", _reader.WaveFormat, _reader.Position);
                     _outputDevice.Init(_reader);
-                    _outputDevice.Volume = Volume;
+                    if (ApplyVolume)
+                        _outputDevice.Volume = Volume;
                     _outputDevice.Play();
-                    _logger.LogInformation("WaveOutEvent started. PlaybackState={PlaybackState}, Volume={Volume}", _outputDevice.PlaybackState, _outputDevice.Volume);
+                    _logger.LogInformation("WaveOutEvent started. PlaybackState={PlaybackState}, ApplyVolume={ApplyVolume}, Volume={Volume}", _outputDevice.PlaybackState, ApplyVolume, Volume);
                     while (_outputDevice.PlaybackState == PlaybackState.Playing && !_requestStop)
                     {
                         Thread.Sleep(500);

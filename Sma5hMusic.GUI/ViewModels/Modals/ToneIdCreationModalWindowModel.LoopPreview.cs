@@ -77,6 +77,7 @@ namespace Sma5hMusic.GUI.ViewModels
                 _logger.LogInformation("Preview loop file ready. File={PreviewFile}, PreviewLengthSamples={PreviewLengthSamples}, Exists={Exists}, Length={Length}",
                     previewInfo.Filename, previewInfo.PreviewLengthSamples, File.Exists(previewInfo.Filename), File.Exists(previewInfo.Filename) ? new FileInfo(previewInfo.Filename).Length : 0);
 
+                _musicPlayer.ApplyVolume = false;
                 var played = await _musicPlayer.Play(previewInfo.Filename);
                 _logger.LogInformation("Preview loop play requested. Played={Played}", played);
                 if (!played)

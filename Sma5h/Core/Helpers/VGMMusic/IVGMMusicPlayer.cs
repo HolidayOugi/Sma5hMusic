@@ -9,6 +9,7 @@ namespace VGMMusic
         int CurrentSample { get; }
         bool Loaded { get; }
         bool Play();
+        bool ApplyVolume { get; set; }
         float Volume { get; set; }
         Task<bool> Play(string filename);
         Task<bool> Play(string filename, int startSample);

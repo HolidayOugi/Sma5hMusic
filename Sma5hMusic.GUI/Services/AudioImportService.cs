@@ -112,12 +112,8 @@ namespace Sma5hMusic.GUI.Services
                     if (loopStartSample > loopEndSample)
                         throw new InvalidOperationException("Loop start sample must be lower than or equal to loop end sample.");
 
-                    var totalSamples48k = ConvertSampleRate(info.TotalSamples, info.SampleRate);
                     var loopStart48k = ConvertSampleRate(loopStartSample, info.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopEndSample, info.SampleRate);
-
-                    if (loopEnd48k >= totalSamples48k)
-                        loopEnd48k = totalSamples48k - 1;
 
                     if (applyNormalization)
                     {
@@ -148,9 +144,11 @@ namespace Sma5hMusic.GUI.Services
                         );
                     }
 
+                    (loopStart48k, loopEnd48k) = FitLoopPointsToWav(tempWavFile, loopStart48k, loopEnd48k);
+
                     _logger.LogInformation("Encoding temporary LOPUS with loop {LoopStart}-{LoopEnd}.", loopStart48k, loopEnd48k);
 
-                    RunTool(
+                    var encoderOutput = RunTool(
                         GetVGAudioCliExe(),
                         tempWavFile,
                         tempLopusFile,
@@ -160,6 +158,8 @@ namespace Sma5hMusic.GUI.Services
                         "--opusheader",
                         "namco"
                     );
+
+                    EnsureLopusCreated(tempLopusFile, encoderOutput);
 
                     _logger.LogInformation("Creating NUS3AUDIO {OutputFile}.", outputFile);
 
@@ -176,6 +176,52 @@ namespace Sma5hMusic.GUI.Services
                     DeleteTempFile(tempLopusFile);
                 }
             });
+        }
+
+        private (uint LoopStartSample, uint LoopEndSample) FitLoopPointsToWav(
+            string wavFile,
+            uint loopStartSample,
+            uint loopEndSample)
+        {
+            var wavInfo = GetAudioInfo(wavFile).GetAwaiter().GetResult();
+
+            if (wavInfo.TotalSamples < 2)
+                throw new InvalidOperationException("The generated WAV file is too short to contain valid loop points.");
+
+            var maxLoopSample = wavInfo.TotalSamples - 1;
+
+            if (loopStartSample > maxLoopSample)
+                throw new InvalidOperationException($"Loop start sample must be lower than {wavInfo.TotalSamples} after audio conversion.");
+
+            var adjustedLoopEndSample = Math.Min(loopEndSample, maxLoopSample);
+
+            if (adjustedLoopEndSample < loopStartSample)
+                throw new InvalidOperationException("Loop end sample became lower than loop start after audio conversion.");
+
+            if (adjustedLoopEndSample != loopEndSample)
+            {
+                _logger.LogInformation(
+                    "Adjusted loop end to fit generated WAV. File={WavFile}, RequestedLoopEnd={RequestedLoopEnd}, AdjustedLoopEnd={AdjustedLoopEnd}, TotalSamples={TotalSamples}.",
+                    wavFile,
+                    loopEndSample,
+                    adjustedLoopEndSample,
+                    wavInfo.TotalSamples
+                );
+            }
+
+            return (loopStartSample, adjustedLoopEndSample);
+        }
+
+        private static void EnsureLopusCreated(string lopusFile, string encoderOutput)
+        {
+            if (File.Exists(lopusFile))
+                return;
+
+            var details = string.IsNullOrWhiteSpace(encoderOutput)
+                ? string.Empty
+                : $" VGAudioCli output: {encoderOutput.Trim()}";
+
+            throw new InvalidOperationException($"VGAudioCli completed without creating the temporary LOPUS file.{details}");
         }
 
         private uint TryReadTotalSamples(string filename)

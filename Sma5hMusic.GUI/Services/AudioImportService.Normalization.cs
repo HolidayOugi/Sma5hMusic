@@ -76,12 +76,8 @@ namespace Sma5hMusic.GUI.Services
 
                     var extractedInfo = GetAudioInfo(extractedWavFile).GetAwaiter().GetResult();
 
-                    var totalSamples48k = ConvertSampleRate(extractedInfo.TotalSamples, extractedInfo.SampleRate);
                     var loopStart48k = ConvertSampleRate(loopPoints.Value.LoopStartSample, extractedInfo.SampleRate);
                     var loopEnd48k = ConvertSampleRate(loopPoints.Value.LoopEndSample, extractedInfo.SampleRate);
-
-                    if (loopEnd48k >= totalSamples48k)
-                        loopEnd48k = totalSamples48k - 1;
 
                     var targetLufs = GetFfmpegLoudnormTarget();
 
@@ -93,6 +89,7 @@ namespace Sma5hMusic.GUI.Services
                     );
 
                     NormalizeAudioToWav(extractedWavFile, normalizedWavFile, targetLufs);
+                    (loopStart48k, loopEnd48k) = FitLoopPointsToWav(normalizedWavFile, loopStart48k, loopEnd48k);
 
                     _logger.LogInformation(
                         "Encoding normalized NUS3AUDIO WAV to LOPUS with old loop points {LoopStart}-{LoopEnd}.",
@@ -100,7 +97,7 @@ namespace Sma5hMusic.GUI.Services
                         loopEnd48k
                     );
 
-                    RunTool(
+                    var encoderOutput = RunTool(
                         GetVGAudioCliExe(),
                         normalizedWavFile,
                         tempLopusFile,
@@ -112,6 +109,8 @@ namespace Sma5hMusic.GUI.Services
                         "--opusheader",
                         "namco"
                     );
+
+                    EnsureLopusCreated(tempLopusFile, encoderOutput);
 
                     _logger.LogInformation("Creating normalized NUS3AUDIO {OutputFile}.", outputFile);
 
