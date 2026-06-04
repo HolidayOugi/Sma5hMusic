@@ -81,11 +81,19 @@ namespace Sma5hMusic.GUI.ViewModels
             _isPlaying = true;
         }
 
+        public static async Task StopCurrentSong()
+        {
+            if (_currentPlayControl != null)
+                await _currentPlayControl.StopSong();
+        }
+
         public async Task StopSong()
         {
             await _musicPlayer.Stop();
             Text = PLAY;
             _isPlaying = false;
+            if (_currentPlayControl == this)
+                _currentPlayControl = null;
         }
 
         private float ConvertVolumeToMusicPlayer(float volume)

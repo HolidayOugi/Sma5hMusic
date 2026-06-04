@@ -20,6 +20,11 @@ namespace Sma5hMusic.GUI.Views
         public ToneIdCreationModalWindow()
         {
             this.InitializeComponent();
+            Opened += async (sender, e) =>
+            {
+                if (ViewModel != null)
+                    await ViewModel.PrepareForOpen();
+            };
             Closing += async (sender, e) =>
             {
                 if (ViewModel != null)

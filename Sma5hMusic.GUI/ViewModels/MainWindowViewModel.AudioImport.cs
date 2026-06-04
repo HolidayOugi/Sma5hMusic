@@ -180,8 +180,11 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             //TODO - Handle anything saving in a specific service
             _logger.LogInformation("Adding {NbrFiles} files to Mod {ModPath}", inputFiles.Count, managerMod.ModPath);
+            var songsRemaining = inputFiles.Count;
             foreach (var inputFile in inputFiles)
             {
+                songsRemaining--;
+                _vmToneIdCreation.LoadQueueStatus(songsRemaining);
                 _vmToneIdCreation.Filename = inputFile;
                 _vmToneIdCreation.LoadToneId(Path.GetFileNameWithoutExtension(inputFile));
 

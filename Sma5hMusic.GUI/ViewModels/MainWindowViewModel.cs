@@ -427,6 +427,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public async Task RenameToneId(BgmDbRootEntryViewModel vmBgmEntry)
         {
             _vmToneIdCreation.Filename = vmBgmEntry.Filename;
+            _vmToneIdCreation.LoadQueueStatus(0);
             _vmToneIdCreation.LoadToneId(vmBgmEntry.ToneId);
             var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
             var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);

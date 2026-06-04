@@ -3,11 +3,11 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="620" d:DesignHeight="250"
-        Width="620" Height="250" MinWidth="520" MinHeight="250"
+        Width="620" MinWidth="520"
         WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
         x:Class="Sma5hMusic.GUI.Views.YoutubeImportModalWindow"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
-        Title="Import Song from YouTube">
+        Classes="youtubeImport" Title="Import Song from YouTube">
 
   <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
     <Border Classes="headerTitle" DockPanel.Dock="Top">
@@ -27,6 +27,7 @@
     <StackPanel Classes="content">
       <fields:PropertyTextField
           x:Name="Url"
+          Classes="youtubeUrlField"
           Label="YouTube URL"
           Text="{Binding Url}"
           ToolTip.Tip="Enter the URL of the YouTube video you want to import."

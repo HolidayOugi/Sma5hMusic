@@ -10,7 +10,16 @@
         Title="{Binding WindowTitle}">
   <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
     <Border Classes="headerTitle" DockPanel.Dock="Top">
-      <TextBlock Text="{Binding WindowTitle}" />
+      <Grid ColumnDefinitions="*,Auto,*">
+        <TextBlock Grid.Column="1" Classes="headerTitleText" Text="{Binding WindowTitle}" />
+        <TextBlock Grid.Column="2"
+                   Text="{Binding QueueStatusText}"
+                   IsVisible="{Binding IsQueueStatusVisible}"
+                   HorizontalAlignment="Right"
+                   VerticalAlignment="Center"
+                   FontSize="12"
+                   Margin="8,0,12,0" />
+      </Grid>
     </Border>
 
     <Border DockPanel.Dock="Bottom" BorderThickness="0,1,0,0" BorderBrush="#404040" Padding="0,8,0,8">

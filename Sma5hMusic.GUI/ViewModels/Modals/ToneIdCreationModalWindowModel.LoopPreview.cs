@@ -34,6 +34,13 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public string PreviewProgressText { get; set; }
 
+        public async Task PrepareForOpen()
+        {
+            _logger.LogInformation("Tone ID modal opened. Stopping active music playback.");
+            await MusicPlayerViewModel.StopCurrentSong();
+            await StopPreview();
+        }
+
         public async Task ClosePreview()
         {
             StopAutoLoopStatusAnimation();

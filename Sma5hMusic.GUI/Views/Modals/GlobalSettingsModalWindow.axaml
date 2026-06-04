@@ -3,10 +3,10 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Width="1200" Height="720" MinWidth="1200"  MinHeight="720"
+        Height="720" MinHeight="720"
         x:Class="Sma5hMusic.GUI.Views.GlobalSettingsModalWindow"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
-        ShowInTaskbar="False" Title="Global Settings">
+        Classes="globalSettings" ShowInTaskbar="False" Title="Global Settings">
   <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
     <Border Classes="headerTitle" DockPanel.Dock="Top">
       <TextBlock>Global Settings</TextBlock>
@@ -17,7 +17,7 @@
     </StackPanel>
 
     <!-- Properties -->
-    <Grid>
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
       <Grid Classes="content" ColumnDefinitions="*,*,*" RowDefinitions="*">
         <!-- UI -->
         <StackPanel Classes="content" Grid.Column="0" Grid.Row="0" HorizontalAlignment="Stretch">
@@ -177,6 +177,6 @@
           <!--<fields:PropertyFolderPickupField Label="Temp Directory" ToolTip="Path where some temporary files will go when a build is happening." Text="{Binding SelectedItem.TempPath}" Command="{Binding ActionOpenFileDialog}" CommandParameter="TempPath"/>-->
         </StackPanel>
       </Grid>
-    </Grid>
+    </ScrollViewer>
   </DockPanel>
 </Window>

@@ -159,6 +159,7 @@ namespace Sma5hMusic.GUI.ViewModels
             var downloadedFiles = new List<string>();
             var downloads = new List<YoutubeDownloadResult>();
             var failedLinks = new List<string>();
+            var skippedSongs = 0;
             var totalSongs = 0;
 
             using var cancellationTokenSource = new CancellationTokenSource();
@@ -257,6 +258,7 @@ namespace Sma5hMusic.GUI.ViewModels
                         );
 
                         downloads.Add(download);
+                        skippedSongs += download.FailedItemsCount;
 
                         var files = download.Filenames?
                             .Where(File.Exists)
@@ -361,6 +363,16 @@ namespace Sma5hMusic.GUI.ViewModels
                 await _messageDialog.ShowError(
                     "YouTube Import Warning",
                     $"yt-dlp could not find {failedLinks.Count} {songText}. Please check that the link is correct."
+                );
+            }
+
+            if (skippedSongs > 0)
+            {
+                var songText = skippedSongs == 1 ? "song" : "songs";
+
+                await _messageDialog.ShowInformation(
+                    "YouTube Import Warning",
+                    $"yt-dlp skipped {skippedSongs} unavailable or private {songText}. The remaining songs will be imported."
                 );
             }
 

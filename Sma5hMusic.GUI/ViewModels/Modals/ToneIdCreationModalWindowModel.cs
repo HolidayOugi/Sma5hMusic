@@ -35,6 +35,12 @@ namespace Sma5hMusic.GUI.ViewModels
         [Reactive]
         public string ToneId { get; set; }
 
+        [Reactive]
+        public string QueueStatusText { get; set; }
+
+        [Reactive]
+        public bool IsQueueStatusVisible { get; set; }
+
         public MusicModEntries NewMusicModEntries { get; private set; }
 
         public ToneIdCreationModalWindowModel(ILogger<ToneIdCreationModalWindowModel> logger, IViewModelManager viewModelManager, IAudioImportService audioImportService, IMessageDialog messageDialog, IVGMMusicPlayer musicPlayer)
@@ -160,6 +166,14 @@ namespace Sma5hMusic.GUI.ViewModels
         {
             var sanitizedToneId = Regex.Replace(toneId.Replace(" ", "_"), REGEX_REPLACE, string.Empty).ToLower();
             ToneId = string.IsNullOrEmpty(sanitizedToneId) ? Guid.NewGuid().ToString("N") : sanitizedToneId;
+        }
+
+        public void LoadQueueStatus(int songsRemaining)
+        {
+            IsQueueStatusVisible = songsRemaining > 0;
+            QueueStatusText = songsRemaining == 1
+                ? "1 Song left in queue..."
+                : $"{songsRemaining} Songs left in queue...";
         }
 
         private async void Cancel(Window w)

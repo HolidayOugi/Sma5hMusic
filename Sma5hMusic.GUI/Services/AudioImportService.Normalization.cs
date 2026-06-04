@@ -170,6 +170,10 @@ namespace Sma5hMusic.GUI.Services
 
         private void NormalizeAudioToWav(string inputFile, string outputFile, double targetLufs)
         {
+            var outputDirectory = Path.GetDirectoryName(outputFile);
+            if (!string.IsNullOrWhiteSpace(outputDirectory))
+                Directory.CreateDirectory(outputDirectory);
+
             var firstPassFilter = string.Format(
                 CultureInfo.InvariantCulture,
                 "loudnorm=I={0}:TP=-1:LRA=11:print_format=json",

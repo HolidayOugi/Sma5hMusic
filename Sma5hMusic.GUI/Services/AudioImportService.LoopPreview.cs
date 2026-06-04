@@ -60,14 +60,15 @@ namespace Sma5hMusic.GUI.Services
                 if (loopStartSample > loopEndSample)
                     throw new InvalidOperationException("Loop start sample must be lower than or equal to loop end sample.");
 
-                Directory.CreateDirectory(GetTempPath());
+                var loopPreviewTempPath = GetLoopPreviewTempPath();
+                Directory.CreateDirectory(loopPreviewTempPath);
 
                 var tempId = Guid.NewGuid().ToString("N");
-                var sourceWavFile = Path.Combine(GetTempPath(), $"{tempId}_source48k.wav");
-                var tempWavFile = Path.Combine(GetTempPath(), $"{tempId}_preview.wav");
-                var restartWavFile = Path.Combine(GetTempPath(), $"{tempId}_restart.wav");
-                var endingWavFile = Path.Combine(GetTempPath(), $"{tempId}_ending.wav");
-                var previewFile = Path.Combine(GetTempPath(), $"{tempId}.wav");
+                var sourceWavFile = Path.Combine(loopPreviewTempPath, $"{tempId}_source48k.wav");
+                var tempWavFile = Path.Combine(loopPreviewTempPath, $"{tempId}_preview.wav");
+                var restartWavFile = Path.Combine(loopPreviewTempPath, $"{tempId}_restart.wav");
+                var endingWavFile = Path.Combine(loopPreviewTempPath, $"{tempId}_ending.wav");
+                var previewFile = Path.Combine(loopPreviewTempPath, $"{tempId}.wav");
                 var soxInputFile = CreateSoxCompatibleInputCopy(filename);
 
                 try
@@ -129,12 +130,11 @@ namespace Sma5hMusic.GUI.Services
         {
             try
             {
-                var tempPath = GetTempPath();
+                var tempPath = GetLoopPreviewTempPath();
                 if (!Directory.Exists(tempPath))
                     return;
 
-                foreach (var file in Directory.EnumerateFiles(tempPath, "*.lopus")
-                    .Concat(Directory.EnumerateFiles(tempPath, "*.wav")))
+                foreach (var file in Directory.EnumerateFiles(tempPath))
                 {
                     DeleteTempFile(file);
                     _logger.LogInformation("Deleted stale loop preview file {LoopPreviewFile}.", file);
@@ -145,6 +145,11 @@ namespace Sma5hMusic.GUI.Services
             {
                 _logger.LogWarning(e, "Could not cleanup stale loop preview files.");
             }
+        }
+
+        private string GetLoopPreviewTempPath()
+        {
+            return Path.Combine(GetTempPath(), "LoopPreviews");
         }
 
         private string RunPymusiclooper(params string[] arguments)
@@ -175,7 +180,7 @@ namespace Sma5hMusic.GUI.Services
             {
                 _logger.LogError(e, "pymusiclooper could not be launched.");
                 throw new FileNotFoundException(
-                    "pymusiclooper was not found. Please install it and add it to PATH.",
+                    "pymusiclooper was not found. Please install it and add it to PATH. Restart the application after installing.",
                     "pymusiclooper",
                     e
                 );
@@ -184,7 +189,7 @@ namespace Sma5hMusic.GUI.Services
             {
                 _logger.LogError(e, "python was launched, but the pymusiclooper module was not found.");
                 throw new FileNotFoundException(
-                    "pymusiclooper was not found. Please install it and add it to PATH.",
+                    "pymusiclooper was not found. Please install it and add it to PATH. Restart the application after installing.",
                     "pymusiclooper",
                     e
                 );
