@@ -75,6 +75,23 @@ namespace Sma5hMusic.GUI.Services
                 StringComparison.OrdinalIgnoreCase);
         }
 
+        public async Task<string> ExtractNus3AudioToWav(string filename)
+        {
+            return await Task.Run(() =>
+            {
+                if (!IsNus3Audio(filename))
+                    return filename;
+
+                if (!File.Exists(filename))
+                    throw new FileNotFoundException($"The NUS3AUDIO file '{filename}' could not be found.", filename);
+
+                Directory.CreateDirectory(GetTempPath());
+
+                var tempWavFile = Path.Combine(GetTempPath(), $"{Guid.NewGuid():N}_nus3audio.wav");
+                return ExtractNus3AudioToWavFile(filename, tempWavFile);
+            });
+        }
+
         public async Task<string> ConvertToNus3Audio(
             string toneId,
             string filename,
@@ -355,6 +372,29 @@ namespace Sma5hMusic.GUI.Services
         private string GetTempPath()
         {
             return Path.Combine(_config.CurrentValue.TempPath, "AudioImport");
+        }
+
+        private string ExtractNus3AudioToWavFile(string filename, string outputFile)
+        {
+            _logger.LogInformation(
+                "Extracting NUS3AUDIO to WAV. Input={InputFile}, Output={OutputFile}.",
+                filename,
+                outputFile
+            );
+
+            RunTool(
+                GetVgmStreamExe(),
+                "-L",
+                "-F",
+                "-o",
+                outputFile,
+                filename
+            );
+
+            if (!File.Exists(outputFile))
+                throw new InvalidOperationException("NUS3AUDIO extraction completed, but the extracted WAV file could not be found.");
+
+            return outputFile;
         }
 
         private string CreateSoxCompatibleInputCopy(string filename)

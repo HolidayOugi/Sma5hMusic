@@ -50,6 +50,9 @@ The software can also automatically detect potential loop points, making it easy
 
 ![PyMusicLooper](https://elixi.re/i/b8l0c.png)
 
+> [!TIP]
+> You can use this feature on songs you've already added!
+
 ## Normalization of Songs
 
 > [!NOTE]
@@ -83,6 +86,7 @@ The songs can be imported either from their URL or from a text file containing a
 
 * (*Should have*) fixed bug where songs would stop playing in-game due to their order in the global song list.
 * Packs now are output in a subfolder of the build folder.
+* Volume can now be set to the mean or median value of all songs' volume in a Mod.
 * If a song from custom Series was not manually added to a playlist, the software will automatically add it to the Battlefield playlist to ensure it shows up in-game.
 * Settings can now be saved when output folder is missing.
 * Fixed importing of files with Japanese characters.

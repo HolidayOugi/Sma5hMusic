@@ -68,10 +68,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 LoadMoreAutoLoops();
 
                 IsAutoLoopCandidatesVisible = true;
-                SelectedAutoLoop = AutoLoopPoints.FirstOrDefault();
                 UpdateAutoLoopLoadedStatus();
-                _logger.LogInformation("Automatic loop point candidates loaded into modal. Count={Count}, SelectedRank={SelectedRank}.",
-                    _allAutoLoopPoints.Count, SelectedAutoLoop?.Rank);
+                _logger.LogInformation("Automatic loop point candidates loaded into modal. Count={Count}.",
+                    _allAutoLoopPoints.Count);
             }
             catch (FileNotFoundException e)
             {

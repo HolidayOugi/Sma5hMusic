@@ -1227,18 +1227,18 @@ namespace Sma5hMusic.GUI.Services
                     {
                         foreach (var bgmProperty in _audioState.GetModBgmPropertyEntries())
                         {
-                            bgmProperty.AudioVolume = Math.Clamp(
+                            bgmProperty.AudioVolume = RoundVolume(Math.Clamp(
                                 bgmProperty.AudioVolume + amount,
                                 Helpers.Constants.MinimumGameVolume,
-                                Helpers.Constants.MaximumGameVolume);
+                                Helpers.Constants.MaximumGameVolume));
                         }
 
                         foreach (var bgmPropertyVm in _viewModelManager.GetBgmPropertyEntriesViewModels().Where(p => p.MusicMod != null))
                         {
-                            bgmPropertyVm.AudioVolume = Math.Clamp(
+                            bgmPropertyVm.AudioVolume = RoundVolume(Math.Clamp(
                                 bgmPropertyVm.AudioVolume + amount,
                                 Helpers.Constants.MinimumGameVolume,
-                                Helpers.Constants.MaximumGameVolume);
+                                Helpers.Constants.MaximumGameVolume));
                         }
                     }
                 }
@@ -1632,6 +1632,11 @@ namespace Sma5hMusic.GUI.Services
                 }, DispatcherPriority.Background);
                 return false;
             }
+        }
+
+        private static float RoundVolume(float volume)
+        {
+            return (float)Math.Round(volume, 2, MidpointRounding.AwayFromZero);
         }
     }
 }

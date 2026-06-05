@@ -256,7 +256,7 @@ namespace Sma5h.Mods.Music.MusicMods
                     ToneId = bgmProperty.NameId,
                     NUS3BankConfig = new NUS3BankConfig()
                     {
-                        AudioVolume = bgmProperty.AudioVolume
+                        AudioVolume = RoundVolume(bgmProperty.AudioVolume)
                     }
                 };
 
@@ -338,10 +338,15 @@ namespace Sma5h.Mods.Music.MusicMods
                 if (bgm.NUS3BankConfig == null)
                     bgm.NUS3BankConfig = new NUS3BankConfig();
 
-                bgm.NUS3BankConfig.AudioVolume = Math.Clamp(bgm.NUS3BankConfig.AudioVolume + amount, minimumVolume, maximumVolume);
+                bgm.NUS3BankConfig.AudioVolume = RoundVolume(Math.Clamp(bgm.NUS3BankConfig.AudioVolume + amount, minimumVolume, maximumVolume));
             }
 
             return SaveMusicModConfig();
+        }
+
+        private static float RoundVolume(float volume)
+        {
+            return (float)Math.Round(volume, 2, MidpointRounding.AwayFromZero);
         }
 
         public bool RemoveMusicModEntries(MusicModDeleteEntries musicModDeleteEntries)
@@ -501,10 +506,23 @@ namespace Sma5h.Mods.Music.MusicMods
             }
 
             var saveMod = musicModConfig ?? _musicModConfig;
+            NormalizeMusicModConfigVolumes(saveMod);
             var metadataJsonFile = Path.Combine(ModPath, MusicConstants.MusicModFiles.MUSIC_MOD_METADATA_JSON_FILE);
             File.WriteAllText(metadataJsonFile, JsonConvert.SerializeObject(saveMod, Formatting.Indented));
 
             return true;
+        }
+
+        private void NormalizeMusicModConfigVolumes(MusicModConfig musicModConfig)
+        {
+            if (musicModConfig?.Series == null)
+                return;
+
+            foreach (var bgm in musicModConfig.Series.SelectMany(s => s.Games?.SelectMany(g => g.Bgms) ?? Enumerable.Empty<BgmConfig>()))
+            {
+                if (bgm.NUS3BankConfig != null)
+                    bgm.NUS3BankConfig.AudioVolume = RoundVolume(bgm.NUS3BankConfig.AudioVolume);
+            }
         }
 
         private MusicModConfig ConvertFromV2Mod(MusicModConfig v2ModConfig)

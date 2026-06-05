@@ -11,11 +11,18 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IMessageDialog _messageDialog;
         private readonly IVGMMusicPlayer _musicPlayer;
         private bool _isUpdatingLoopFields;
+        private uint _initialLoopStartSample;
+        private uint _initialLoopEndSample;
 
         [Reactive]
         public bool IsAudioImport { get; set; }
 
-        public string WindowTitle => IsAudioImport ? "Choose Loops" : "Choose a Tone ID";
+        [Reactive]
+        public bool IsLoopPreviewOnly { get; set; }
+
+        public string WindowTitle => IsLoopPreviewOnly ? "Preview Loops" : IsAudioImport ? "Choose Loops" : "Choose a Tone ID";
+
+        public string ResetLoopButtonText => IsLoopPreviewOnly ? "Reset Changes" : "Reset to Defaults";
 
         [Reactive]
         public bool CanApplyNormalization { get; set; }
@@ -74,6 +81,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadAudioImportInfo(uint sampleRate, uint totalSamples)
         {
             IsAudioImport = true;
+            IsLoopPreviewOnly = false;
             ApplyNormalization = false;
             CanApplyNormalization = true;
 
@@ -91,6 +99,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadNus3AudioImportInfo()
         {
             IsAudioImport = false;
+            IsLoopPreviewOnly = false;
             ApplyNormalization = false;
             CanApplyNormalization = true;
 
@@ -112,6 +121,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public void ClearAudioImportInfo()
         {
             IsAudioImport = false;
+            IsLoopPreviewOnly = false;
             ApplyNormalization = false;
             CanApplyNormalization = false;
 
@@ -130,13 +140,43 @@ namespace Sma5hMusic.GUI.ViewModels
             ClearAutoLoopPoints();
         }
 
+        public void LoadLoopPreviewOnlyInfo(
+            string filename,
+            uint sampleRate,
+            uint totalSamples,
+            uint loopStartSample,
+            uint loopEndSample)
+        {
+            LoadAudioImportInfo(sampleRate, totalSamples);
+
+            IsLoopPreviewOnly = true;
+            Filename = filename;
+            ToneId = Guid.NewGuid().ToString("N");
+            ApplyNormalization = false;
+            CanApplyNormalization = false;
+            _initialLoopStartSample = Math.Min(loopStartSample, totalSamples);
+            _initialLoopEndSample = loopEndSample == 0 ? totalSamples : Math.Min(loopEndSample, totalSamples);
+            LoopStartSample = _initialLoopStartSample;
+            LoopEndSample = _initialLoopEndSample;
+            SelectedAutoLoop = null;
+        }
+
         private void ResetLoopDefaults()
         {
             if (!IsAudioImport)
                 return;
 
-            LoopStartSample = 0;
-            LoopEndSample = TotalSamples;
+            if (IsLoopPreviewOnly)
+            {
+                LoopStartSample = _initialLoopStartSample;
+                LoopEndSample = _initialLoopEndSample;
+            }
+            else
+            {
+                LoopStartSample = 0;
+                LoopEndSample = TotalSamples;
+            }
+
             SelectedAutoLoop = null;
         }
 

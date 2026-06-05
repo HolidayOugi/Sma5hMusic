@@ -79,7 +79,7 @@ namespace Sma5hMusic.GUI.Services
                         "--format", "bestaudio/best",
                         "--extract-audio",
                         "--ffmpeg-location", ffmpegExecutable,
-                        "--audio-format", "mp3",
+                        "--audio-format", "wav",
                         "--audio-quality", "0",
                         "--restrict-filenames",
                         "--print", "after_move:filepath",
@@ -99,7 +99,7 @@ namespace Sma5hMusic.GUI.Services
                     if (filenames.Count == 0)
                     {
                         filenames = Directory
-                            .EnumerateFiles(tempDirectory, "*.mp3")
+                            .EnumerateFiles(tempDirectory, "*.wav")
                             .OrderBy(p => p)
                             .ToList();
                     }

@@ -28,6 +28,15 @@ namespace Sma5hMusic.GUI.ViewModels
             IsIndeterminate = true;
         }
 
+        public void SetNormalizing(string filename)
+        {
+            Current = 0;
+            Total = 1;
+            Message = "Normalizing Audio File...";
+            Filename = filename;
+            IsIndeterminate = true;
+        }
+
         public void SetComplete()
         {
             Current = 1;

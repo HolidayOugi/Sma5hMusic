@@ -37,95 +37,117 @@ namespace Sma5hMusic.GUI.Services
                 if (File.Exists(outputFile))
                     throw new InvalidOperationException($"The destination file '{Path.GetFileName(outputFile)}' already exists in the selected mod.");
 
+                return NormalizeNus3AudioToFile(toneId, filename, outputFile);
+            });
+        }
+
+        public async Task<string> NormalizeExistingNus3Audio(
+            string toneId,
+            string filename)
+        {
+            return await Task.Run(() =>
+            {
+                if (!IsNus3Audio(filename))
+                    throw new InvalidOperationException($"'{Path.GetFileName(filename)}' is not a NUS3AUDIO file.");
+
+                if (!File.Exists(filename))
+                    throw new FileNotFoundException($"The NUS3AUDIO file '{filename}' could not be found.", filename);
+
+                Directory.CreateDirectory(GetTempPath());
+
                 var tempId = Guid.NewGuid().ToString("N");
-                var extractedWavFile = Path.Combine(GetTempPath(), $"{tempId}_source.wav");
-                var normalizedWavFile = Path.Combine(GetTempPath(), $"{tempId}_normalized.wav");
-                var tempLopusFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
+                var normalizedNus3AudioFile = Path.Combine(GetTempPath(), $"{tempId}.nus3audio");
 
                 try
                 {
-                    var loopPoints = ExtractNus3AudioLoopPoints(filename);
-
-                    if (loopPoints == null)
-                        throw new InvalidOperationException($"Could not read loop points from '{Path.GetFileName(filename)}'.");
-
-                    _logger.LogInformation(
-                        "Extracted NUS3AUDIO loop points. File={File}, LoopStart={LoopStart}, LoopEnd={LoopEnd}.",
-                        filename,
-                        loopPoints.Value.LoopStartSample,
-                        loopPoints.Value.LoopEndSample
-                    );
-
-                    _logger.LogInformation(
-                        "Extracting NUS3AUDIO to WAV. Input={InputFile}, Output={OutputFile}.",
-                        filename,
-                        extractedWavFile
-                    );
-
-                    RunTool(
-                        GetVgmStreamExe(),
-                        "-L",
-                        "-F",
-                        "-o",
-                        extractedWavFile,
-                        filename
-                    );
-
-                    if (!File.Exists(extractedWavFile))
-                        throw new InvalidOperationException("NUS3AUDIO extraction completed, but the extracted WAV file could not be found.");
-
-                    var extractedInfo = GetAudioInfo(extractedWavFile).GetAwaiter().GetResult();
-
-                    var loopStart48k = ConvertSampleRate(loopPoints.Value.LoopStartSample, extractedInfo.SampleRate);
-                    var loopEnd48k = ConvertSampleRate(loopPoints.Value.LoopEndSample, extractedInfo.SampleRate);
-
-                    var targetLufs = GetFfmpegLoudnormTarget();
-
-                    _logger.LogInformation(
-                        "Normalizing extracted NUS3AUDIO WAV. Input={InputFile}, Output={OutputFile}, TargetLUFS={TargetLUFS}.",
-                        extractedWavFile,
-                        normalizedWavFile,
-                        targetLufs
-                    );
-
-                    NormalizeAudioToWav(extractedWavFile, normalizedWavFile, targetLufs);
-                    (loopStart48k, loopEnd48k) = FitLoopPointsToWav(normalizedWavFile, loopStart48k, loopEnd48k);
-
-                    _logger.LogInformation(
-                        "Encoding normalized NUS3AUDIO WAV to LOPUS with old loop points {LoopStart}-{LoopEnd}.",
-                        loopStart48k,
-                        loopEnd48k
-                    );
-
-                    var encoderOutput = RunTool(
-                        GetVGAudioCliExe(),
-                        normalizedWavFile,
-                        tempLopusFile,
-                        "-l",
-                        $"{loopStart48k}-{loopEnd48k}",
-                        "--bitrate",
-                        "64000",
-                        "--cbr",
-                        "--opusheader",
-                        "namco"
-                    );
-
-                    EnsureLopusCreated(tempLopusFile, encoderOutput);
-
-                    _logger.LogInformation("Creating normalized NUS3AUDIO {OutputFile}.", outputFile);
-
-                    RunTool(GetNus3AudioExe(), "-n", "-w", outputFile);
-                    RunTool(GetNus3AudioExe(), "-A", toneId, tempLopusFile, "-w", outputFile);
-
-                    return outputFile;
+                    NormalizeNus3AudioToFile(toneId, filename, normalizedNus3AudioFile);
+                    File.Copy(normalizedNus3AudioFile, filename, true);
+                    return filename;
                 }
                 finally
                 {
-                    DeleteTempFile(extractedWavFile);
-                    DeleteTempFile(normalizedWavFile);
-                    DeleteTempFile(tempLopusFile);
+                    DeleteTempFile(normalizedNus3AudioFile);
                 }
             });
+        }
+
+        private string NormalizeNus3AudioToFile(
+            string toneId,
+            string filename,
+            string outputFile)
+        {
+            var tempId = Guid.NewGuid().ToString("N");
+            var extractedWavFile = Path.Combine(GetTempPath(), $"{tempId}_source.wav");
+            var normalizedWavFile = Path.Combine(GetTempPath(), $"{tempId}_normalized.wav");
+            var tempLopusFile = Path.Combine(GetTempPath(), $"{tempId}.lopus");
+
+            try
+            {
+                var loopPoints = ExtractNus3AudioLoopPoints(filename);
+
+                if (loopPoints == null)
+                    throw new InvalidOperationException($"Could not read loop points from '{Path.GetFileName(filename)}'.");
+
+                _logger.LogInformation(
+                    "Extracted NUS3AUDIO loop points. File={File}, LoopStart={LoopStart}, LoopEnd={LoopEnd}.",
+                    filename,
+                    loopPoints.Value.LoopStartSample,
+                    loopPoints.Value.LoopEndSample
+                );
+
+                ExtractNus3AudioToWavFile(filename, extractedWavFile);
+
+                var extractedInfo = GetAudioInfo(extractedWavFile).GetAwaiter().GetResult();
+
+                var loopStart48k = ConvertSampleRate(loopPoints.Value.LoopStartSample, extractedInfo.SampleRate);
+                var loopEnd48k = ConvertSampleRate(loopPoints.Value.LoopEndSample, extractedInfo.SampleRate);
+
+                var targetLufs = GetFfmpegLoudnormTarget();
+
+                _logger.LogInformation(
+                    "Normalizing extracted NUS3AUDIO WAV. Input={InputFile}, Output={OutputFile}, TargetLUFS={TargetLUFS}.",
+                    extractedWavFile,
+                    normalizedWavFile,
+                    targetLufs
+                );
+
+                NormalizeAudioToWav(extractedWavFile, normalizedWavFile, targetLufs);
+                (loopStart48k, loopEnd48k) = FitLoopPointsToWav(normalizedWavFile, loopStart48k, loopEnd48k);
+
+                _logger.LogInformation(
+                    "Encoding normalized NUS3AUDIO WAV to LOPUS with old loop points {LoopStart}-{LoopEnd}.",
+                    loopStart48k,
+                    loopEnd48k
+                );
+
+                var encoderOutput = RunTool(
+                    GetVGAudioCliExe(),
+                    normalizedWavFile,
+                    tempLopusFile,
+                    "-l",
+                    $"{loopStart48k}-{loopEnd48k}",
+                    "--bitrate",
+                    "64000",
+                    "--cbr",
+                    "--opusheader",
+                    "namco"
+                );
+
+                EnsureLopusCreated(tempLopusFile, encoderOutput);
+
+                _logger.LogInformation("Creating normalized NUS3AUDIO {OutputFile}.", outputFile);
+
+                RunTool(GetNus3AudioExe(), "-n", "-w", outputFile);
+                RunTool(GetNus3AudioExe(), "-A", toneId, tempLopusFile, "-w", outputFile);
+
+                return outputFile;
+            }
+            finally
+            {
+                DeleteTempFile(extractedWavFile);
+                DeleteTempFile(normalizedWavFile);
+                DeleteTempFile(tempLopusFile);
+            }
         }
 
         private (uint LoopStartSample, uint LoopEndSample)? ExtractNus3AudioLoopPoints(string filename)

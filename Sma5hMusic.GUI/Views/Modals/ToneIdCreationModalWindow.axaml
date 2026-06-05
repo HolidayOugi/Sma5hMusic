@@ -37,13 +37,13 @@
 
     <ScrollViewer VerticalScrollBarVisibility="Auto">
       <StackPanel x:Name="ModalContent" Classes="content" MaxWidth="{Binding Bounds.Width, RelativeSource={RelativeSource AncestorType=ScrollViewer}}">
-        <fields:PropertyTextField Classes="jpnSupport" Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" />
-        <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." />
+        <fields:PropertyTextField Classes="jpnSupport" Label="Filename" Text="{Binding Filename, Mode=OneWay}" ToolTip="The source of the song" IsReadOnly="True" IsVisible="{Binding !IsLoopPreviewOnly}" />
+        <fields:PropertyTextField x:Name="ToneId" Label="Tone ID" Text="{Binding ToneId, Mode=TwoWay}" ToolTip="Choose a ToneId for this new song." IsVisible="{Binding !IsLoopPreviewOnly}" />
 
         <StackPanel IsVisible="{Binding IsAudioImport}">
           <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
             <fields:PropertyUIntField Grid.Row="0" Grid.Column="0" Label="Sample rate" Value="{Binding SampleRate, Mode=OneWay}" ToolTip="Sample rate of the audio file." IsReadOnly="True" />
-            <Button Grid.Row="0" Grid.Column="1" Margin="8,20,8,0" HorizontalAlignment="Center" VerticalAlignment="Center" Content="Reset to defaults" Command="{Binding ActionResetLoopDefaults}" />
+            <Button Grid.Row="0" Grid.Column="1" Margin="8,20,8,0" HorizontalAlignment="Center" VerticalAlignment="Center" Content="{Binding ResetLoopButtonText}" Command="{Binding ActionResetLoopDefaults}" />
             <fields:PropertyUIntField Grid.Row="1" Grid.Column="0" Label="Total samples" Value="{Binding TotalSamples, Mode=OneWay}" ToolTip="Total number of samples in the audio file." IsReadOnly="True" />
             <fields:PropertyUIntField Grid.Row="1" Grid.Column="1" Margin="8,0,0,0" Label="Total ms" Value="{Binding TotalTimeMs, Mode=OneWay}" ToolTip="Total length in milliseconds." IsReadOnly="True" />
           </Grid>
