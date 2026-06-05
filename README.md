@@ -61,7 +61,7 @@ The software can also automatically detect potential loop points, making it easy
 Songs can now be **normalized** to a certain LUFS normalization level. This can be selected in two ways.
 
 * **At Import Time**: when adding a song, either already converted or not, a checkbox can be checked for Normalization.
-* **Batch Normalization**: in the Tools -> Scripts submenu, a new option can be chosen to normalize all of the songs already added to the software.
+* **Batch Normalization**: in the Extra submenu, a new option can be chosen to normalize all of the songs already added to the software.
 
 ![Normalization](https://elixi.re/i/xat1c.png)
 

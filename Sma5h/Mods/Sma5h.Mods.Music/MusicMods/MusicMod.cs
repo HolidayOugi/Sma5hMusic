@@ -344,6 +344,24 @@ namespace Sma5h.Mods.Music.MusicMods
             return SaveMusicModConfig();
         }
 
+        public bool SetSongVolumes(float volume, float minimumVolume, float maximumVolume)
+        {
+            if (_musicModConfig?.Series == null)
+                return true;
+
+            var normalizedVolume = RoundVolume(Math.Clamp(volume, minimumVolume, maximumVolume));
+
+            foreach (var bgm in _musicModConfig.Series.SelectMany(s => s.Games.SelectMany(g => g.Bgms)))
+            {
+                if (bgm.NUS3BankConfig == null)
+                    bgm.NUS3BankConfig = new NUS3BankConfig();
+
+                bgm.NUS3BankConfig.AudioVolume = normalizedVolume;
+            }
+
+            return SaveMusicModConfig();
+        }
+
         private static float RoundVolume(float volume)
         {
             return (float)Math.Round(volume, 2, MidpointRounding.AwayFromZero);

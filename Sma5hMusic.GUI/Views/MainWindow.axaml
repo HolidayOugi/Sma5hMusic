@@ -54,13 +54,6 @@
         <MenuItem Header="Scripts">
         <MenuItem Header="Export Song Entries to CSV" Command="{Binding ActionExportSongsCSV}"></MenuItem>
         <Separator></Separator>
-        <MenuItem Header="Normalize Songs in all Mods"
-                  ToolTip.Tip="Normalizes every song in every mod."
-                  Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>
-          <MenuItem Header="Adjust Song Volumes in all Mods"
-                    ToolTip.Tip="Adjusts every song volume by a selected amount between -10 and 10."
-                    Command="{Binding ActionAdjustModSongVolumes}"></MenuItem>
-        <Separator></Separator>
           <MenuItem Header="Enable Song Selector in all Stages" Command="{Binding ActionUpdateBgmSelector}">
             <MenuItem.CommandParameter>
               <sys:Boolean>True</sys:Boolean>
@@ -84,6 +77,17 @@
           <MenuItem Header="Reset Playlists (playlist_override.json)" Command="{Binding ActionResetModOverrideFile}" CommandParameter="playlist_override.json"></MenuItem>
           <MenuItem Header="Reset Stage Metadata (stage_override.json)" Command="{Binding ActionResetModOverrideFile}" CommandParameter="stage_override.json"></MenuItem>
         </MenuItem>
+      </MenuItem>
+      <MenuItem Header="Extra">
+        <MenuItem Header="Normalize Songs in all Mods"
+                  ToolTip.Tip="Normalizes every song in every mod."
+                  Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>
+        <MenuItem Header="Increase / Decrease Volume for all Songs"
+                  ToolTip.Tip="Increases or decreases the volume of every song in every mod by the selected value."
+                  Command="{Binding ActionAdjustModSongVolumes}"></MenuItem>
+        <MenuItem Header="Set Volume for all Songs"
+                  ToolTip.Tip="Sets every song volume in every mod to the same value."
+                  Command="{Binding ActionSetModSongVolumes}"></MenuItem>
       </MenuItem>
       <MenuItem Header="Settings">
         <MenuItem Header="Show Advanced BGM Options" Command="{Binding ActionToggleAdvanced}">

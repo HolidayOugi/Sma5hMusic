@@ -1205,8 +1205,12 @@ namespace Sma5hMusic.GUI.Services
 
             await Dispatcher.UIThread.InvokeAsync(async () =>
             {
-                confirm = await _messageDialog.ShowWarningConfirm("Adjust Mod Song Volumes",
-                    $"This script will adjust the volume of every song in every mod by {amount:+0.##;-0.##;0}.\r\n" +
+                var isIncrease = amount >= 0;
+                var action = isIncrease ? "Increase" : "Decrease";
+                var amountText = isIncrease ? amount.ToString("0.##") : Math.Abs(amount).ToString("0.##");
+
+                confirm = await _messageDialog.ShowWarningConfirm($"{action} Volume for all Songs",
+                    $"This script will {action.ToLower()} the volume of every song in every mod by {amountText}.\r\n" +
                     "Continue?");
             }, DispatcherPriority.Background);
 
@@ -1252,14 +1256,81 @@ namespace Sma5hMusic.GUI.Services
                 {
                     await Dispatcher.UIThread.InvokeAsync(async () =>
                     {
-                        await _messageDialog.ShowError("Adjust Mod Song Volumes", "An error happened while adjusting one or multiple mod song volumes. You should restart the application. Please check the logs.");
+                        await _messageDialog.ShowError("Increase / Decrease Volume for all Songs", "An error happened while adjusting one or multiple mod song volumes.");
                     }, DispatcherPriority.Background);
                     return false;
                 }
 
                 await Dispatcher.UIThread.InvokeAsync(async () =>
                 {
-                    await _messageDialog.ShowInformation("Adjust Mod Song Volumes", "Done!");
+                    await _messageDialog.ShowInformation("Increase / Decrease Volume for all Songs", "Done!");
+                }, DispatcherPriority.Background);
+                return true;
+            }
+
+            return false;
+        }
+
+        public async Task<bool> SetModSongVolumes(float volume)
+        {
+            bool confirm = false;
+            bool result = true;
+            var normalizedVolume = RoundVolume(Math.Clamp(
+                volume,
+                Helpers.Constants.MinimumGameVolume,
+                Helpers.Constants.MaximumGameVolume));
+
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                confirm = await _messageDialog.ShowWarningConfirm("Set Volume for all Songs",
+                    $"This script will set the volume of every song in every mod to {normalizedVolume:0.00}.\r\n" +
+                    "Continue?");
+            }, DispatcherPriority.Background);
+
+            if (confirm && await BackupProject(false, false))
+            {
+                try
+                {
+                    foreach (var mod in _musicModManagerService.MusicMods)
+                    {
+                        if (!mod.SetSongVolumes(normalizedVolume, Helpers.Constants.MinimumGameVolume, Helpers.Constants.MaximumGameVolume))
+                        {
+                            result = false;
+                            break;
+                        }
+                    }
+
+                    if (result)
+                    {
+                        foreach (var bgmProperty in _audioState.GetModBgmPropertyEntries())
+                        {
+                            bgmProperty.AudioVolume = normalizedVolume;
+                        }
+
+                        foreach (var bgmPropertyVm in _viewModelManager.GetBgmPropertyEntriesViewModels().Where(p => p.MusicMod != null))
+                        {
+                            bgmPropertyVm.AudioVolume = normalizedVolume;
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "An error happened while setting one or multiple mod song volumes. {Message}", e.Message);
+                    result = false;
+                }
+
+                if (!result)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        await _messageDialog.ShowError("Set Volume for all Songs", "An error happened while setting one or multiple mod song volumes.");
+                    }, DispatcherPriority.Background);
+                    return false;
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    await _messageDialog.ShowInformation("Set Volume for all Songs", "Done!");
                 }, DispatcherPriority.Background);
                 return true;
             }

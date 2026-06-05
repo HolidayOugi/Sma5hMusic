@@ -17,6 +17,7 @@ namespace Sma5h.Mods.Music.Interfaces
         Task<bool> AddOrUpdateMusicModEntries(MusicModEntries musicModEntries);
         bool ReorderSongs(List<string> list);
         bool AdjustSongVolumes(float amount, float minimumVolume, float maximumVolume);
+        bool SetSongVolumes(float volume, float minimumVolume, float maximumVolume);
         bool RemoveMusicModEntries(MusicModDeleteEntries musicModDeleteEntries);
     }
 }

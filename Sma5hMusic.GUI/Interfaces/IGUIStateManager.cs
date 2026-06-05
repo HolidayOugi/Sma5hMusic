@@ -22,6 +22,7 @@ namespace Sma5hMusic.GUI.Interfaces
         Task UpdateBgmSelectorStages(bool enable);
         Task<bool> ReorderSongsMod();
         Task<bool> AdjustModSongVolumes(float amount);
+        Task<bool> SetModSongVolumes(float volume);
         Task<bool> ResetModOverrideFile(string file);
         #endregion
 
