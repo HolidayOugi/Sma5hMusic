@@ -91,7 +91,7 @@ The songs can be imported either from their URL or from a text file containing a
 1.  Original Code and Author: Deinonychus71
 2.  Research: soneek
 3.  Testing: Demonslayerx8, Segtendo
-4.  Icon: Segtendo
+4.  Original Icon: Segtendo
 5.  prcEditor: https://github.com/BenHall-7/paracobNET - BenHall-7
 6.  paramLabels: https://github.com/ultimate-research/param-labels - BenHall-7, jam1garner, Dr-HyperCake, Birdwards, ThatNintendoNerd, ScanMountGoat, Meshima, Blazingflare, TheSmartKid, jugeeya, Demonslayerx8
 7.  msbtEditor: https://github.com/IcySon55/3DLandMSBTeditor - IcySon55, exelix11
