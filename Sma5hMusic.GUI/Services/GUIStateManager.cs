@@ -1198,6 +1198,75 @@ namespace Sma5hMusic.GUI.Services
 
         }
 
+        public async Task<bool> AdjustModSongVolumes(float amount)
+        {
+            bool confirm = false;
+            bool result = true;
+
+            await Dispatcher.UIThread.InvokeAsync(async () =>
+            {
+                confirm = await _messageDialog.ShowWarningConfirm("Adjust Mod Song Volumes",
+                    $"This script will adjust the volume of every song in every mod by {amount:+0.##;-0.##;0}.\r\n" +
+                    "Continue?");
+            }, DispatcherPriority.Background);
+
+            if (confirm && await BackupProject(false, false))
+            {
+                try
+                {
+                    foreach (var mod in _musicModManagerService.MusicMods)
+                    {
+                        if (!mod.AdjustSongVolumes(amount, Helpers.Constants.MinimumGameVolume, Helpers.Constants.MaximumGameVolume))
+                        {
+                            result = false;
+                            break;
+                        }
+                    }
+
+                    if (result)
+                    {
+                        foreach (var bgmProperty in _audioState.GetModBgmPropertyEntries())
+                        {
+                            bgmProperty.AudioVolume = Math.Clamp(
+                                bgmProperty.AudioVolume + amount,
+                                Helpers.Constants.MinimumGameVolume,
+                                Helpers.Constants.MaximumGameVolume);
+                        }
+
+                        foreach (var bgmPropertyVm in _viewModelManager.GetBgmPropertyEntriesViewModels().Where(p => p.MusicMod != null))
+                        {
+                            bgmPropertyVm.AudioVolume = Math.Clamp(
+                                bgmPropertyVm.AudioVolume + amount,
+                                Helpers.Constants.MinimumGameVolume,
+                                Helpers.Constants.MaximumGameVolume);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    _logger.LogError(e, "An error happened while adjusting one or multiple mod song volumes. {Message}", e.Message);
+                    result = false;
+                }
+
+                if (!result)
+                {
+                    await Dispatcher.UIThread.InvokeAsync(async () =>
+                    {
+                        await _messageDialog.ShowError("Adjust Mod Song Volumes", "An error happened while adjusting one or multiple mod song volumes. You should restart the application. Please check the logs.");
+                    }, DispatcherPriority.Background);
+                    return false;
+                }
+
+                await Dispatcher.UIThread.InvokeAsync(async () =>
+                {
+                    await _messageDialog.ShowInformation("Adjust Mod Song Volumes", "Done!");
+                }, DispatcherPriority.Background);
+                return true;
+            }
+
+            return false;
+        }
+
         public async Task<bool> ResetModOverrideFile(string file)
         {
             bool confirm = false;

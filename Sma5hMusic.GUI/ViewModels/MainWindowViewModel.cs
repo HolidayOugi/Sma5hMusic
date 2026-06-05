@@ -87,6 +87,7 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionExportSongsCSV { get; }
         public ReactiveCommand<Unit, Unit> ActionFixUnknownValues { get; }
         public ReactiveCommand<Unit, Unit> ActionReorderSongsMod { get; }
+        public ReactiveCommand<Unit, Unit> ActionAdjustModSongVolumes { get; }
         public ReactiveCommand<bool, Unit> ActionUpdateBgmSelector { get; }
         public ReactiveCommand<string, Unit> ActionResetModOverrideFile { get; }
         public ReactiveCommand<bool, Unit> ActionBackupProject { get; }
@@ -216,6 +217,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionNormalizeNus3AudioFiles = ReactiveCommand.CreateFromTask(NormalizeNus3AudioFiles);
             ActionFixUnknownValues = ReactiveCommand.CreateFromTask(FixUnknownValues);
             ActionReorderSongsMod = ReactiveCommand.CreateFromTask(ReorderSongsMod);
+            ActionAdjustModSongVolumes = ReactiveCommand.CreateFromTask(AdjustModSongVolumes);
             ActionUpdateBgmSelector = ReactiveCommand.CreateFromTask<bool>((enabled) => UpdateBgmSelector(enabled));
             ActionResetModOverrideFile = ReactiveCommand.CreateFromTask<string>((file) => ResetModOverrideFile(file));
             ActionBackupProject = ReactiveCommand.CreateFromTask<bool>((fullBackup) => _guiStateManager.BackupProject(fullBackup));
@@ -375,6 +377,19 @@ namespace Sma5hMusic.GUI.ViewModels
         public async Task ReorderSongsMod()
         {
             if (await _guiStateManager.ReorderSongsMod())
+                await OnInitData();
+        }
+
+        public async Task AdjustModSongVolumes()
+        {
+            var volumeAdjustmentPickerVm = new SongVolumeAdjustmentPickerModalWindowViewModel();
+            var volumeAdjustmentPicker = new SongVolumeAdjustmentPickerModalWindow() { DataContext = volumeAdjustmentPickerVm };
+            var result = await volumeAdjustmentPicker.ShowDialog<SongVolumeAdjustmentPickerModalWindow>(_rootDialog.Window);
+
+            if (result == null)
+                return;
+
+            if (await _guiStateManager.AdjustModSongVolumes((float)volumeAdjustmentPickerVm.VolumeAdjustment))
                 await OnInitData();
         }
 

@@ -126,16 +126,20 @@
               <Border Classes="contentTitle" DockPanel.Dock="Top">
                 <TextBlock>Advanced Options</TextBlock>
               </Border>
-              <fields:PropertyField Label="Volume" ToolTip="Change the volume of the song in game.">
-                <fields:PropertyField.FieldContent>
-                  <Grid ColumnDefinitions="*,70">
-                    <Slider TickFrequency="0.1" TickPlacement="Outside" IsSnapToTickEnabled="True" Minimum="-20" Maximum="20" Orientation="Horizontal" Value="{Binding Path=BgmPropertyViewModel.AudioVolume, Mode=TwoWay}"/>
-                    <StackPanel Grid.Column="1" Margin="2,15,5,0">
-                      <TextBox Text="{Binding Path=BgmPropertyViewModel.AudioVolume, Mode=TwoWay}"></TextBox>
-                    </StackPanel>
-                  </Grid>
-                </fields:PropertyField.FieldContent>
-              </fields:PropertyField>
+              <StackPanel Classes="propertyField">
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                  <TextBlock Text="Volume" VerticalAlignment="Center"/>
+                  <TextBlock Text="&#128712;" Classes="tooltip" VerticalAlignment="Center" ToolTip.Tip="Change the volume of the song in game."/>
+                  <Button Content="Set to Mean" Margin="10,2,0,0" Height="22" Padding="6,0" VerticalAlignment="Center" Command="{Binding ActionSetVolumeToAverage}"></Button>
+                  <Button Content="Set to Median" Margin="4,2,0,0" Height="22" Padding="6,0" VerticalAlignment="Center" Command="{Binding ActionSetVolumeToMedian}"></Button>
+                </StackPanel>
+                <Grid ColumnDefinitions="*,70">
+                  <Slider TickFrequency="0.1" TickPlacement="Outside" IsSnapToTickEnabled="True" Minimum="-20" Maximum="20" Orientation="Horizontal" Value="{Binding Path=BgmPropertyViewModel.AudioVolume, Mode=TwoWay}"/>
+                  <StackPanel Grid.Column="1" Margin="2,15,5,0">
+                    <TextBox Text="{Binding Path=BgmPropertyViewModel.AudioVolume, Mode=TwoWay}"></TextBox>
+                  </StackPanel>
+                </Grid>
+              </StackPanel>
               <fields:PropertyField Label="Sound Test" ToolTip="The song will be given an index and be sortable in the list of songs.">
                 <fields:PropertyField.FieldContent>
                   <CheckBox IsChecked="{Binding IsInSoundTest}"/>

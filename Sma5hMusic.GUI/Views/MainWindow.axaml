@@ -57,6 +57,9 @@
         <MenuItem Header="Normalize Songs in all Mods"
                   ToolTip.Tip="Normalizes every song in every mod."
                   Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>
+          <MenuItem Header="Adjust Song Volumes in all Mods"
+                    ToolTip.Tip="Adjusts every song volume by a selected amount between -10 and 10."
+                    Command="{Binding ActionAdjustModSongVolumes}"></MenuItem>
         <Separator></Separator>
           <MenuItem Header="Enable Song Selector in all Stages" Command="{Binding ActionUpdateBgmSelector}">
             <MenuItem.CommandParameter>

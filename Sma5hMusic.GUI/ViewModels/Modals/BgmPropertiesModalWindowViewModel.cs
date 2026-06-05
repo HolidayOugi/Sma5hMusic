@@ -32,6 +32,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly ILogger _logger;
         private readonly IFileDialog _fileDialog;
         private readonly IGUIStateManager _guiStateManager;
+        private readonly IViewModelManager _viewModelManager;
         private readonly List<GameTitleEntryViewModel> _recentGameTitles;
         private readonly List<ComboItem> _recordTypes;
         private readonly List<ComboItem> _specialCategories;
@@ -85,6 +86,8 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<BgmPropertyEntryViewModel, Unit> ActionChangeFile { get; }
         public ReactiveCommand<BgmPropertyEntryViewModel, Unit> ActionCalculateLoopCues { get; }
         public ReactiveCommand<Window, Unit> ActionClosing { get; }
+        public ReactiveCommand<Unit, Unit> ActionSetVolumeToAverage { get; }
+        public ReactiveCommand<Unit, Unit> ActionSetVolumeToMedian { get; }
 
         public BgmPropertiesModalWindowViewModel(IOptionsMonitor<ApplicationSettings> config, ILogger<BgmPropertiesModalWindowViewModel> logger, IFileDialog fileDialog,
             IMapper mapper, IGUIStateManager guiStateManager, IViewModelManager viewModelManager)
@@ -93,6 +96,7 @@ namespace Sma5hMusic.GUI.ViewModels
             _logger = logger;
             _mapper = mapper;
             _guiStateManager = guiStateManager;
+            _viewModelManager = viewModelManager;
             _fileDialog = fileDialog;
             _recordTypes = GetRecordTypes();
             _specialCategories = GetSpecialCategories();
@@ -165,6 +169,39 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionChangeFile = ReactiveCommand.CreateFromTask<BgmPropertyEntryViewModel>(ChangeFile);
             ActionCalculateLoopCues = ReactiveCommand.CreateFromTask<BgmPropertyEntryViewModel>(CalculateAudioCues);
             ActionClosing = ReactiveCommand.Create<Window>(ClosingWindow);
+            ActionSetVolumeToAverage = ReactiveCommand.Create(SetVolumeToAverage);
+            ActionSetVolumeToMedian = ReactiveCommand.Create(SetVolumeToMedian);
+        }
+
+        private void SetVolumeToAverage()
+        {
+            var volumes = GetCurrentMetadataSongVolumes();
+            if (volumes.Count == 0)
+                return;
+
+            BgmPropertyViewModel.AudioVolume = (float)Math.Round(volumes.Average(), 1);
+        }
+
+        private void SetVolumeToMedian()
+        {
+            var volumes = GetCurrentMetadataSongVolumes().OrderBy(p => p).ToList();
+            if (volumes.Count == 0)
+                return;
+
+            var middle = volumes.Count / 2;
+            var median = volumes.Count % 2 == 1
+                ? volumes[middle]
+                : (volumes[middle - 1] + volumes[middle]) / 2.0f;
+
+            BgmPropertyViewModel.AudioVolume = (float)Math.Round(median, 1);
+        }
+
+        private List<float> GetCurrentMetadataSongVolumes()
+        {
+            return _viewModelManager.GetBgmPropertyEntriesViewModels()
+                .Where(p => p.MusicMod?.Id == BgmPropertyViewModel.MusicMod?.Id)
+                .Select(p => p.AudioVolume)
+                .ToList();
         }
 
         private bool ValidateStreamPropertyTime(string value)

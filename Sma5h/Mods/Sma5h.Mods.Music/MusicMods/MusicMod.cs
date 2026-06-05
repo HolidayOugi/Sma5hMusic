@@ -328,6 +328,22 @@ namespace Sma5h.Mods.Music.MusicMods
             return true;
         }
 
+        public bool AdjustSongVolumes(float amount, float minimumVolume, float maximumVolume)
+        {
+            if (_musicModConfig?.Series == null)
+                return true;
+
+            foreach (var bgm in _musicModConfig.Series.SelectMany(s => s.Games.SelectMany(g => g.Bgms)))
+            {
+                if (bgm.NUS3BankConfig == null)
+                    bgm.NUS3BankConfig = new NUS3BankConfig();
+
+                bgm.NUS3BankConfig.AudioVolume = Math.Clamp(bgm.NUS3BankConfig.AudioVolume + amount, minimumVolume, maximumVolume);
+            }
+
+            return SaveMusicModConfig();
+        }
+
         public bool RemoveMusicModEntries(MusicModDeleteEntries musicModDeleteEntries)
         {
             if (musicModDeleteEntries == null)

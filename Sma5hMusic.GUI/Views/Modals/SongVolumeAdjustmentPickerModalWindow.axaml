@@ -1,0 +1,29 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="420" d:DesignHeight="220"
+        Width="420" Height="220" MinWidth="420" MinHeight="220"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
+        x:Class="Sma5hMusic.GUI.Views.SongVolumeAdjustmentPickerModalWindow"
+        Title="Adjust Song Volumes">
+  <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
+    <Border Classes="headerTitle" DockPanel.Dock="Top">
+      <TextBlock>Adjust Song Volumes</TextBlock>
+    </Border>
+    <StackPanel Classes="modalActions" DockPanel.Dock="Bottom">
+      <Button Content="Apply" Command="{Binding ActionOK}" CommandParameter="{Binding $parent[Window]}"></Button>
+      <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
+    </StackPanel>
+
+    <StackPanel Classes="content" HorizontalAlignment="Center">
+      <TextBlock Text="Song Volume Change" HorizontalAlignment="Center" ToolTip.Tip="Amount to add to every mod song volume. Final song volumes are clamped between -20 and 20."/>
+      <Grid ColumnDefinitions="*,70" Width="320">
+        <Slider TickFrequency="0.1" IsSnapToTickEnabled="True" SmallChange="0.1" LargeChange="0.1" Minimum="-10" Maximum="10" Orientation="Horizontal" Value="{Binding VolumeAdjustment, Mode=TwoWay}"/>
+        <StackPanel Grid.Column="1" Margin="2,15,5,0">
+          <TextBox Text="{Binding VolumeAdjustmentText, Mode=TwoWay}"></TextBox>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </DockPanel>
+</Window>
