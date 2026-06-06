@@ -113,7 +113,7 @@
             <DataGridTemplateColumn.CellTemplate>
               <DataTemplate>
                 <TextBlock Background="Transparent" Margin="{StaticResource DataGridTextColumnCellTextBlockMargin}" VerticalAlignment="Center" 
-                           Foreground="{Binding TestDispOrder, Converter={StaticResource HiddenColumnConverter}}" Text="{Binding MusicModViewModel.Name, Mode=OneWay}">
+                           Foreground="{Binding TestDispOrder, Converter={StaticResource HiddenColumnConverter}}" Text="{Binding ModName, Mode=OneWay}">
                   <TextBlock.ContextMenu>
                     <ContextMenu IsVisible="{Binding IsMod}">
                       <MenuItem Header="[EXPERIMENTAL] Rename Tone ID..." Command="{Binding $parent[DataGrid].DataContext.ActionRenameToneId, Mode=OneWay}" CommandParameter="{Binding}"/>

@@ -1,0 +1,58 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="600"
+        Width="650" Height="700" MinWidth="650" MinHeight="500"
+        x:Class="Sma5hMusic.GUI.Views.GameMultiPickerModalWindow"
+        WindowStartupLocation="CenterScreen" ShowInTaskbar="False"
+        Title="Sort Songs Alphabetically by Game">
+  <DockPanel Classes="modal" LastChildFill="True" HorizontalAlignment="Stretch">
+    <Border Classes="headerTitle" DockPanel.Dock="Top">
+      <TextBlock>Select Games</TextBlock>
+    </Border>
+
+    <StackPanel Classes="modalActions" DockPanel.Dock="Bottom">
+      <Button Content="Sort Selected" Command="{Binding ActionOK}" CommandParameter="{Binding $parent[Window]}"></Button>
+      <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
+    </StackPanel>
+
+    <DockPanel Classes="content" LastChildFill="True">
+      <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,10">
+        <Button Content="Select Series" Command="{Binding ActionEnableAll}" Margin="0,0,8,0"></Button>
+        <Button Content="Clear Series" Command="{Binding ActionDisableAll}"></Button>
+      </StackPanel>
+
+      <Grid ColumnDefinitions="230,*">
+        <ListBox Grid.Column="0"
+                 Items="{Binding Series}"
+                 SelectedItem="{Binding SelectedSeries, Mode=TwoWay}"
+                 Margin="0,0,12,0">
+          <ListBox.ItemTemplate>
+            <DataTemplate>
+              <Grid ColumnDefinitions="*,Auto" HorizontalAlignment="Stretch">
+                <TextBlock Grid.Column="0" Text="{Binding Title}" TextWrapping="Wrap"/>
+                <TextBlock Grid.Column="1" Text="{Binding GameCount}" Opacity="0.65" Margin="10,0,0,0"/>
+              </Grid>
+            </DataTemplate>
+          </ListBox.ItemTemplate>
+        </ListBox>
+
+        <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Visible">
+          <ItemsControl Items="{Binding FilteredGames}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <CheckBox IsChecked="{Binding IsSelected, Mode=TwoWay}" Margin="0,3">
+                  <Grid ColumnDefinitions="2*,Auto" HorizontalAlignment="Stretch">
+                    <TextBlock Grid.Column="0" Text="{Binding Title}" TextWrapping="Wrap"/>
+                    <TextBlock Grid.Column="1" Text="{Binding SongCount}" Opacity="0.65" Margin="12,0,0,0" TextWrapping="Wrap"/>
+                  </Grid>
+                </CheckBox>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+      </Grid>
+    </DockPanel>
+  </DockPanel>
+</Window>

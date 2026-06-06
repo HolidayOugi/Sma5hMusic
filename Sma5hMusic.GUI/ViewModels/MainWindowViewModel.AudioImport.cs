@@ -181,6 +181,7 @@ namespace Sma5hMusic.GUI.ViewModels
             //TODO - Handle anything saving in a specific service
             _logger.LogInformation("Adding {NbrFiles} files to Mod {ModPath}", inputFiles.Count, managerMod.ModPath);
             var songsRemaining = inputFiles.Count;
+            bool? previousApplyNormalization = null;
             foreach (var inputFile in inputFiles)
             {
                 songsRemaining--;
@@ -213,6 +214,9 @@ namespace Sma5hMusic.GUI.ViewModels
                     _vmToneIdCreation.ClearAudioImportInfo();
                 }
 
+                if (previousApplyNormalization.HasValue && _vmToneIdCreation.CanApplyNormalization)
+                    _vmToneIdCreation.ApplyNormalization = previousApplyNormalization.Value;
+
                 var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
                 var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);
                 if (result != null)
@@ -220,6 +224,8 @@ namespace Sma5hMusic.GUI.ViewModels
                     string toneId = _vmToneIdCreation.ToneId;
                     var importFile = inputFile;
                     var applyNormalization = _vmToneIdCreation.ApplyNormalization;
+                    if (_vmToneIdCreation.CanApplyNormalization)
+                        previousApplyNormalization = applyNormalization;
 
                     if (applyNormalization && !_audioImportService.IsFfmpegConfigured())
                     {
@@ -253,10 +259,7 @@ namespace Sma5hMusic.GUI.ViewModels
                     {
                         try
                         {
-                            IsLoading = true;
-                            IsShowingDebug = true;
-
-                            importFile = await _audioImportService.NormalizeNus3Audio(
+                            importFile = await NormalizeNus3AudioWithProgress(
                                 toneId,
                                 inputFile,
                                 managerMod.ModPath);
@@ -265,11 +268,6 @@ namespace Sma5hMusic.GUI.ViewModels
                         {
                             await _messageDialog.ShowError("Audio import failed", e.Message, e);
                             continue;
-                        }
-                        finally
-                        {
-                            IsLoading = false;
-                            IsShowingDebug = false;
                         }
                     }
 
@@ -317,6 +315,52 @@ namespace Sma5hMusic.GUI.ViewModels
                     loopStartSample,
                     loopEndSample,
                     applyNormalization);
+
+                progressVm.SetComplete();
+                return result;
+            }
+            finally
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    closingProgrammatically = true;
+
+                    if (progressWindow.IsVisible)
+                        progressWindow.Close();
+                });
+
+                await progressDialogTask;
+            }
+        }
+
+        private async Task<string> NormalizeNus3AudioWithProgress(
+            string toneId,
+            string inputFile,
+            string modPath)
+        {
+            var progressVm = new AudioConversionProgressModalWindowViewModel();
+            progressVm.SetNormalizing(Path.GetFileName(inputFile));
+
+            var progressWindow = new AudioConversionProgressModalWindow
+            {
+                DataContext = progressVm
+            };
+
+            var closingProgrammatically = false;
+            progressWindow.Closing += (sender, args) =>
+            {
+                if (!closingProgrammatically)
+                    args.Cancel = true;
+            };
+
+            var progressDialogTask = progressWindow.ShowDialog(_rootDialog.Window);
+
+            try
+            {
+                var result = await _audioImportService.NormalizeNus3Audio(
+                    toneId,
+                    inputFile,
+                    modPath);
 
                 progressVm.SetComplete();
                 return result;

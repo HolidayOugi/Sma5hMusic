@@ -88,6 +88,9 @@
         <MenuItem Header="Set Volume for all Songs"
                   ToolTip.Tip="Sets every song volume in every mod to the same value."
                   Command="{Binding ActionSetModSongVolumes}"></MenuItem>
+        <MenuItem Header="Sort Songs Alphabetically by Game"
+                  ToolTip.Tip="Sorts selected games alphabetically."
+                  Command="{Binding ActionSortSongsAlphabeticallyByGame}"></MenuItem>
       </MenuItem>
       <MenuItem Header="Settings">
         <MenuItem Header="Show Advanced BGM Options" Command="{Binding ActionToggleAdvanced}">
