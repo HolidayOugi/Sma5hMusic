@@ -443,8 +443,6 @@ namespace Sma5hMusic.GUI.ViewModels
 
                 if (BgmPropertyViewModel.MusicPlayer != null)
                     await BgmPropertyViewModel.MusicPlayer.ChangeFilename(BgmPropertyViewModel.Filename);
-
-                await _messageDialog.ShowInformation("Normalize Song", "Done!");
             }
             catch (Exception e)
             {
