@@ -17,5 +17,6 @@ namespace Sma5hMusic.GUI.Interfaces
         bool IsNus3Audio(string filename);
         Task<string> NormalizeNus3Audio(string toneId, string filename, string modPath);
         Task<string> NormalizeExistingNus3Audio(string toneId, string filename);
+        Task<string> UpdateExistingNus3AudioLoopPoints(string toneId, string filename, uint loopStartSample, uint loopEndSample);
     }
 }

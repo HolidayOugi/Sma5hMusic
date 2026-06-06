@@ -37,6 +37,15 @@ namespace Sma5hMusic.GUI.ViewModels
             IsIndeterminate = true;
         }
 
+        public void SetUpdatingLoops(string filename)
+        {
+            Current = 0;
+            Total = 1;
+            Message = "Updating Song Loops...";
+            Filename = filename;
+            IsIndeterminate = true;
+        }
+
         public void SetComplete()
         {
             Current = 1;

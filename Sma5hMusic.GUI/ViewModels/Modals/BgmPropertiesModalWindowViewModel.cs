@@ -316,6 +316,26 @@ namespace Sma5hMusic.GUI.ViewModels
                 if (result == null)
                     return;
 
+                var newLoopStartSample = vmToneIdCreation.LoopStartSample;
+                var newLoopEndSample = vmToneIdCreation.LoopEndSample;
+
+                if (_audioImportService.IsNus3Audio(BgmPropertyViewModel.Filename))
+                {
+                    if (BgmPropertyViewModel.MusicPlayer != null)
+                        await BgmPropertyViewModel.MusicPlayer.StopSong();
+
+                    await UpdateNus3AudioLoopPointsWithProgress(
+                        parentWindow,
+                        BgmPropertyViewModel.NameId,
+                        BgmPropertyViewModel.Filename,
+                        newLoopStartSample,
+                        newLoopEndSample
+                    );
+
+                    if (BgmPropertyViewModel.MusicPlayer != null)
+                        await BgmPropertyViewModel.MusicPlayer.ChangeFilename(BgmPropertyViewModel.Filename);
+                }
+
                 BgmPropertyViewModel.LoopStartSample = vmToneIdCreation.LoopStartSample;
                 BgmPropertyViewModel.LoopEndSample = vmToneIdCreation.LoopEndSample;
                 BgmPropertyViewModel.LoopStartMs = vmToneIdCreation.LoopStartMs;
@@ -331,6 +351,49 @@ namespace Sma5hMusic.GUI.ViewModels
             finally
             {
                 DeleteTemporaryPreviewFile(BgmPropertyViewModel.Filename, previewFilename);
+            }
+        }
+
+        private async Task UpdateNus3AudioLoopPointsWithProgress(
+            Window parentWindow,
+            string toneId,
+            string filename,
+            uint loopStartSample,
+            uint loopEndSample)
+        {
+            var progressVm = new AudioConversionProgressModalWindowViewModel();
+            progressVm.SetUpdatingLoops(Path.GetFileName(filename));
+
+            var progressWindow = new AudioConversionProgressModalWindow
+            {
+                DataContext = progressVm
+            };
+
+            var closingProgrammatically = false;
+            progressWindow.Closing += (sender, args) =>
+            {
+                if (!closingProgrammatically)
+                    args.Cancel = true;
+            };
+
+            var progressDialogTask = progressWindow.ShowDialog(parentWindow);
+
+            try
+            {
+                await _audioImportService.UpdateExistingNus3AudioLoopPoints(toneId, filename, loopStartSample, loopEndSample);
+                progressVm.SetComplete();
+            }
+            finally
+            {
+                await Dispatcher.UIThread.InvokeAsync(() =>
+                {
+                    closingProgrammatically = true;
+
+                    if (progressWindow.IsVisible)
+                        progressWindow.Close();
+                });
+
+                await progressDialogTask;
             }
         }
 
