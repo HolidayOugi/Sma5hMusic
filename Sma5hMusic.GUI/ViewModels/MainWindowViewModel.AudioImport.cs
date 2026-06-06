@@ -219,6 +219,9 @@ namespace Sma5hMusic.GUI.ViewModels
 
                 var modalToneIdCreation = new ToneIdCreationModalWindow() { DataContext = _vmToneIdCreation };
                 var result = await modalToneIdCreation.ShowDialog<ToneIdCreationModalWindow>(_rootDialog.Window);
+                if (result == null && _vmToneIdCreation.IsCancelAllRequested)
+                    break;
+
                 if (result != null)
                 {
                     string toneId = _vmToneIdCreation.ToneId;

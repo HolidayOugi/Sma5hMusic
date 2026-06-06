@@ -32,6 +32,10 @@
 
         <Button Content="Choose" Command="{Binding ActionCreate}" CommandParameter="{Binding $parent[Window]}"></Button>
         <Button Content="Cancel" Command="{Binding ActionCancel}" CommandParameter="{Binding $parent[Window]}"></Button>
+        <Button Content="Cancel All"
+                Command="{Binding ActionCancelAll}"
+                CommandParameter="{Binding $parent[Window]}"
+                IsVisible="{Binding IsCancelAllVisible}"></Button>
       </StackPanel>
     </Border>
 

@@ -27,6 +27,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private const string REGEX_VALIDATION = @"^[a-z0-9_]+$";
 
         public ReactiveCommand<Window, Unit> ActionCancel { get; }
+        public ReactiveCommand<Window, Unit> ActionCancelAll { get; }
         public ReactiveCommand<Window, Unit> ActionCreate { get; }
 
         [Reactive]
@@ -40,6 +41,11 @@ namespace Sma5hMusic.GUI.ViewModels
 
         [Reactive]
         public bool IsQueueStatusVisible { get; set; }
+
+        [Reactive]
+        public bool IsCancelAllVisible { get; set; }
+
+        public bool IsCancelAllRequested { get; private set; }
 
         public MusicModEntries NewMusicModEntries { get; private set; }
 
@@ -135,6 +141,7 @@ namespace Sma5hMusic.GUI.ViewModels
                     loopEndSample <= totalSamples);
             var canCalculateAutoLoops = this.WhenAnyValue(x => x.IsAudioImport, x => x.IsCalculatingAutoLoops, (isAudioImport, isCalculating) => isAudioImport && !isCalculating);
             ActionCancel = ReactiveCommand.Create<Window>(Cancel);
+            ActionCancelAll = ReactiveCommand.Create<Window>(CancelAll);
             ActionCreate = ReactiveCommand.Create<Window>(Select, canExecute);
             ActionPreviewLoop = ReactiveCommand.CreateFromTask(PreviewLoop, canPreview);
             ActionStopPreview = ReactiveCommand.CreateFromTask(StopPreview);
@@ -175,9 +182,27 @@ namespace Sma5hMusic.GUI.ViewModels
         public void LoadQueueStatus(int songsRemaining)
         {
             IsQueueStatusVisible = songsRemaining > 0;
+            IsCancelAllVisible = songsRemaining > 0;
+            IsCancelAllRequested = false;
             QueueStatusText = songsRemaining == 1
                 ? "1 Song left in queue..."
                 : $"{songsRemaining} Songs left in queue...";
+        }
+
+        private async void CancelAll(Window w)
+        {
+            IsCancelAllRequested = true;
+
+            try
+            {
+                _logger.LogInformation("Tone ID modal cancel all requested. Stopping preview before close.");
+                await ClosePreview();
+            }
+            catch (Exception e)
+            {
+                _logger.LogError(e, "Error while stopping loop preview on cancel all.");
+            }
+            w.Close();
         }
 
         private async void Cancel(Window w)

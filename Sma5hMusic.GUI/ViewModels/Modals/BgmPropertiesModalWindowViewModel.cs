@@ -228,12 +228,27 @@ namespace Sma5hMusic.GUI.ViewModels
             if (o == null)
                 return;
 
-            SelectedGameTitleViewModel = _games.FirstOrDefault(p => p == o);
+            SelectedGameTitleViewModel = _games.FirstOrDefault(p => p.UiGameTitleId == o.UiGameTitleId);
 
             Dispatcher.UIThread.InvokeAsync(() =>
             {
                 SelectedRecentAction = null;
             }, DispatcherPriority.Background);
+        }
+
+        private void AddRecentGameTitle(GameTitleEntryViewModel gameTitle)
+        {
+            if (gameTitle == null || string.IsNullOrEmpty(gameTitle.UiGameTitleId))
+                return;
+
+            _recentGameTitles.RemoveAll(p => p.UiGameTitleId == gameTitle.UiGameTitleId);
+
+            if (_recentGameTitles.Count > 9)
+                _recentGameTitles.RemoveAt(_recentGameTitles.Count - 1);
+
+            _recentGameTitles.Insert(0, gameTitle);
+            DisplayRecents = _recentGameTitles.Count > 0;
+            this.RaisePropertyChanged(nameof(RecentGameTitles));
         }
 
         private void AddNewGame(Window window)
@@ -493,13 +508,7 @@ namespace Sma5hMusic.GUI.ViewModels
 
             if (!string.IsNullOrEmpty(SelectedGameTitleViewModel?.UiGameTitleId) && _originalGameTitleId != SelectedGameTitleViewModel.UiGameTitleId)
             {
-                if (SelectedGameTitleViewModel != null && !_recentGameTitles.Contains(SelectedGameTitleViewModel))
-                {
-                    if (_recentGameTitles.Count > 9)
-                        _recentGameTitles.RemoveAt(_recentGameTitles.Count - 1);
-                    _recentGameTitles.Insert(0, SelectedGameTitleViewModel);
-                }
-                DisplayRecents = _recentGameTitles.Count() > 0;
+                AddRecentGameTitle(SelectedGameTitleViewModel);
             }
 
             return Task.FromResult(true);
