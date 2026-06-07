@@ -42,6 +42,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
         private enum CskPackBuildMode
         {
             Modular,
+            MetadataOnly,
             Single
         }
 

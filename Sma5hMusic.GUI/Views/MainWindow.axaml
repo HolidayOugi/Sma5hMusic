@@ -79,6 +79,9 @@
         </MenuItem>
       </MenuItem>
       <MenuItem Header="Extra">
+        <MenuItem Header="Build CSK Metadata only"
+                  ToolTip.Tip="Builds modular CSK pack metadata for all series without any BGM files."
+                  Command="{Binding ActionBuildCskMetadataOnly}"></MenuItem>
         <MenuItem Header="Normalize Songs in all Mods"
                   ToolTip.Tip="Normalizes every song in every mod."
                   Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>

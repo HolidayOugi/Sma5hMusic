@@ -205,6 +205,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionBuildNoCache = ReactiveCommand.CreateFromTask(OnBuildNoCache);
             ActionBuildCskPacks = ReactiveCommand.CreateFromTask(OnBuildCskPacks);
             ActionBuildSingleCskPack = ReactiveCommand.CreateFromTask(OnBuildSingleCskPack);
+            ActionBuildCskMetadataOnly = ReactiveCommand.CreateFromTask(OnBuildCskMetadataOnly);
             ActionRefreshData = ReactiveCommand.CreateFromTask(() => OnInitData());
             ActionToggleAdvanced = ReactiveCommand.Create(OnAdvancedToggle);
             ActionToggleConsole = ReactiveCommand.Create(OnConsoleToggle);

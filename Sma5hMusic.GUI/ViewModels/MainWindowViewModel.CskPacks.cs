@@ -15,6 +15,7 @@ namespace Sma5hMusic.GUI.ViewModels
 
         public ReactiveCommand<Unit, Unit> ActionBuildCskPacks { get; }
         public ReactiveCommand<Unit, Unit> ActionBuildSingleCskPack { get; }
+        public ReactiveCommand<Unit, Unit> ActionBuildCskMetadataOnly { get; }
 
         public async Task OnBuildCskPacks()
         {
@@ -49,6 +50,45 @@ namespace Sma5hMusic.GUI.ViewModels
             catch (Exception e)
             {
                 await _messageDialog.ShowError("CSK pack build failed", e.Message, e);
+            }
+            finally
+            {
+                if (buildStarted)
+                {
+                    IsLoading = false;
+                    IsShowingDebug = false;
+                }
+            }
+        }
+
+        public async Task OnBuildCskMetadataOnly()
+        {
+            var buildStarted = false;
+            try
+            {
+                var currentLocale = _viewModelManager.CurrentLocale;
+                var availableSeries = await _cskPackBuildService.GetAvailableSeries(currentLocale);
+                if (availableSeries.Count == 0)
+                {
+                    await _messageDialog.ShowError("CSK metadata build failed", "No series were found in the currently loaded music mods.");
+                    return;
+                }
+
+                if (!await _buildDialog.EnsureArcOutputIsClean())
+                    return;
+
+                IsLoading = true;
+                IsShowingDebug = true;
+                buildStarted = true;
+                await _musicPlayer.Stop();
+                _logger.LogInformation("Building CSK metadata-only packs for all {SeriesCount} available series.", availableSeries.Count);
+
+                await _cskPackBuildService.BuildMetadataOnly(currentLocale);
+                await _messageDialog.ShowInformation("Complete", "CSK metadata-only build complete.");
+            }
+            catch (Exception e)
+            {
+                await _messageDialog.ShowError("CSK metadata build failed", e.Message, e);
             }
             finally
             {

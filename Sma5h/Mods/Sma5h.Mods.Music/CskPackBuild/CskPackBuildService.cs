@@ -60,6 +60,11 @@ namespace Sma5h.Mods.Music.CskPackBuild
             return Task.Run(() => BuildInternal(selected, CskPackBuildMode.Modular, locale));
         }
 
+        public Task BuildMetadataOnly(string locale = null)
+        {
+            return Task.Run(() => BuildInternal(null, CskPackBuildMode.MetadataOnly, locale));
+        }
+
         public Task BuildSingle(IEnumerable<string> selectedSeriesKeys, string locale = null)
         {
             var selected = new HashSet<string>(selectedSeriesKeys ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
@@ -124,11 +129,15 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
                 try
                 {
-                    var generatedBgmFolder = GenerateBgmFiles(contexts, tempRoot, selectedSeriesKeys, buildResources.CoreGameOverride);
+                    var includeAudio = buildMode != CskPackBuildMode.MetadataOnly;
+                    var generatedBgmFolder = includeAudio
+                        ? GenerateBgmFiles(contexts, tempRoot, selectedSeriesKeys, buildResources.CoreGameOverride)
+                        : null;
+
                     if (buildMode == CskPackBuildMode.Single)
-                        GenerateSingleCskPack(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
+                        GenerateSingleCskPack(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources, includeAudio);
                     else
-                        GenerateCskPacks(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
+                        GenerateCskPacks(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources, includeAudio);
                 }
                 finally
                 {

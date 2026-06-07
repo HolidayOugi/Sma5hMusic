@@ -22,6 +22,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
             string seriesFolderName,
             string outputRoot,
             string generatedBgmFolder,
+            bool includeAudio,
             ref int orderCounter)
         {
             if (coreGameOverride == null)
@@ -33,7 +34,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 msgTitleEntries.Add(MakeEntry($"tit_{GetString(gameMeta, "name_id")}", EscapeXml(gameTitle)));
 
                 foreach (JObject bgm in GetArray(gameMeta, "bgms"))
-                    orderCounter = ProcessBgm(bgm, songData, playlistOverride, msgBgmEntries, coreBgmOverride, orderOverride, seriesName, seriesFolderName, outputRoot, generatedBgmFolder, orderCounter);
+                    orderCounter = ProcessBgm(bgm, songData, playlistOverride, msgBgmEntries, coreBgmOverride, orderOverride, seriesName, seriesFolderName, outputRoot, generatedBgmFolder, includeAudio, orderCounter);
             }
         }
 
