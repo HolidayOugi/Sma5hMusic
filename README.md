@@ -51,7 +51,7 @@ The software can also automatically detect potential loop points, making it easy
 ![PyMusicLooper](https://elixi.re/i/b8l0c.png)
 
 > [!TIP]
-> You can use this feature on songs you've already added!
+> This feature can be used from the BGM Properties tab on songs you've already added!
 
 ## Normalization of Songs
 
