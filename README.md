@@ -58,9 +58,10 @@ The software can also automatically detect potential loop points, making it easy
 > [!NOTE]
 > Requires the download of [FFmpeg](https://www.ffmpeg.org/) and for its path to be set in the Global Settings.
 
-Songs can now be **normalized** to a certain LUFS normalization level. This can be selected in two ways.
+Songs can now be **normalized** to a certain LUFS normalization level. This can be applied in three ways.
 
 * **At Import Time**: when adding a song, either already converted or not, a checkbox can be checked for Normalization.
+* **In BGM Properties**: a new option is available in the BGM Properties tab to normalize songs that've already been added.
 * **Batch Normalization**: in the Extra submenu, a new option can be chosen to normalize all of the songs already added to the software.
 
 ![Normalization](https://elixi.re/i/xat1c.png)

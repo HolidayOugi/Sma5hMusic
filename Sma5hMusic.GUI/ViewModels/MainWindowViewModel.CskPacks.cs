@@ -33,6 +33,9 @@ namespace Sma5hMusic.GUI.ViewModels
                     return;
                 }
 
+                if (!await _buildDialog.EnsureArcOutputIsClean())
+                    return;
+
                 IsLoading = true;
                 IsShowingDebug = true;
                 buildStarted = true;
@@ -76,6 +79,9 @@ namespace Sma5hMusic.GUI.ViewModels
 
                 var selectedSeriesKeys = pickerViewModel.GetSelectedSeriesKeys().ToList();
                 if (selectedSeriesKeys.Count == 0)
+                    return;
+
+                if (!await _buildDialog.EnsureArcOutputIsClean())
                     return;
 
                 IsLoading = true;
