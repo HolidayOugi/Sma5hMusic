@@ -6,9 +6,9 @@ namespace Sma5h.Mods.Music.Interfaces
 {
     public interface ICskPackBuildService
     {
-        Task Build();
-        Task Build(IEnumerable<string> selectedSeriesKeys);
-        Task BuildSingle(IEnumerable<string> selectedSeriesKeys);
-        Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries();
+        Task Build(string locale = null);
+        Task Build(IEnumerable<string> selectedSeriesKeys, string locale = null);
+        Task BuildSingle(IEnumerable<string> selectedSeriesKeys, string locale = null);
+        Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries(string locale = null);
     }
 }

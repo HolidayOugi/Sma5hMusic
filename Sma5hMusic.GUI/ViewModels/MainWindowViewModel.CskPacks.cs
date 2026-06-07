@@ -26,7 +26,8 @@ namespace Sma5hMusic.GUI.ViewModels
             var buildStarted = false;
             try
             {
-                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
+                var currentLocale = _viewModelManager.CurrentLocale;
+                var availableSeries = await _cskPackBuildService.GetAvailableSeries(currentLocale);
                 if (availableSeries.Count == 0)
                 {
                     await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
@@ -42,7 +43,7 @@ namespace Sma5hMusic.GUI.ViewModels
                 await _musicPlayer.Stop();
                 _logger.LogInformation("Building single CSK pack for all {SeriesCount} available series.", availableSeries.Count);
 
-                await _cskPackBuildService.BuildSingle(availableSeries.Select(p => p.Key));
+                await _cskPackBuildService.BuildSingle(availableSeries.Select(p => p.Key), currentLocale);
                 await _messageDialog.ShowInformation("Complete", "Single CSK pack build complete.");
             }
             catch (Exception e)
@@ -64,7 +65,8 @@ namespace Sma5hMusic.GUI.ViewModels
             var buildStarted = false;
             try
             {
-                var availableSeries = await _cskPackBuildService.GetAvailableSeries();
+                var currentLocale = _viewModelManager.CurrentLocale;
+                var availableSeries = await _cskPackBuildService.GetAvailableSeries(currentLocale);
                 if (availableSeries.Count == 0)
                 {
                     await _messageDialog.ShowError("CSK pack build failed", "No series were found in the currently loaded music mods.");
@@ -91,9 +93,9 @@ namespace Sma5hMusic.GUI.ViewModels
                 _logger.LogInformation("Building {CskBuildMode} CSK pack(s) for {SelectedSeriesCount} selected series.", singlePack ? "single" : "modular", selectedSeriesKeys.Count);
 
                 if (singlePack)
-                    await _cskPackBuildService.BuildSingle(selectedSeriesKeys);
+                    await _cskPackBuildService.BuildSingle(selectedSeriesKeys, currentLocale);
                 else
-                    await _cskPackBuildService.Build(selectedSeriesKeys);
+                    await _cskPackBuildService.Build(selectedSeriesKeys, currentLocale);
 
                 await _messageDialog.ShowInformation("Complete", singlePack ? "Single CSK pack build complete." : "Modular CSK packs build complete.");
             }

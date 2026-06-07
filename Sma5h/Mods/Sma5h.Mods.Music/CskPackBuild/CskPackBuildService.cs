@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Sma5h.Mods.Music.CskPackBuild
@@ -27,6 +28,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
         private readonly INus3AudioService _nus3AudioService;
         private readonly IAudioStateService _audioStateService;
         private readonly ILogger _logger;
+        private readonly AsyncLocal<string> _currentBuildLocale = new AsyncLocal<string>();
 
         public CskPackBuildService(
             IOptionsMonitor<CskPackBuildOptions> config,
@@ -44,39 +46,47 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         #region Public
 
-        public Task Build()
+        public Task Build(string locale = null)
         {
-            return Task.Run(() => BuildInternal(null, CskPackBuildMode.Modular));
+            return Task.Run(() => BuildInternal(null, CskPackBuildMode.Modular, locale));
         }
 
-        public Task Build(IEnumerable<string> selectedSeriesKeys)
-        {
-            var selected = new HashSet<string>(selectedSeriesKeys ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
-            if (selected.Count == 0)
-                throw new InvalidOperationException("No CSK pack series were selected.");
-
-            return Task.Run(() => BuildInternal(selected, CskPackBuildMode.Modular));
-        }
-
-        public Task BuildSingle(IEnumerable<string> selectedSeriesKeys)
+        public Task Build(IEnumerable<string> selectedSeriesKeys, string locale = null)
         {
             var selected = new HashSet<string>(selectedSeriesKeys ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
             if (selected.Count == 0)
                 throw new InvalidOperationException("No CSK pack series were selected.");
 
-            return Task.Run(() => BuildInternal(selected, CskPackBuildMode.Single));
+            return Task.Run(() => BuildInternal(selected, CskPackBuildMode.Modular, locale));
         }
 
-        public Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries()
+        public Task BuildSingle(IEnumerable<string> selectedSeriesKeys, string locale = null)
+        {
+            var selected = new HashSet<string>(selectedSeriesKeys ?? Enumerable.Empty<string>(), StringComparer.OrdinalIgnoreCase);
+            if (selected.Count == 0)
+                throw new InvalidOperationException("No CSK pack series were selected.");
+
+            return Task.Run(() => BuildInternal(selected, CskPackBuildMode.Single, locale));
+        }
+
+        public Task<IReadOnlyList<CskPackSeriesOption>> GetAvailableSeries(string locale = null)
         {
             return Task.Run<IReadOnlyList<CskPackSeriesOption>>(() =>
             {
-                var contexts = LoadModContexts(GetMusicMods());
-                return contexts
-                    .SelectMany(context => context.SeriesList.Select(series => CreateSeriesOption(context, series)))
-                    .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
-                    .ThenBy(p => p.ModName, StringComparer.OrdinalIgnoreCase)
-                .ToList();
+                _currentBuildLocale.Value = locale;
+                try
+                {
+                    var contexts = LoadModContexts(GetMusicMods());
+                    return contexts
+                        .SelectMany(context => context.SeriesList.Select(series => CreateSeriesOption(context, series)))
+                        .OrderBy(p => p.DisplayName, StringComparer.OrdinalIgnoreCase)
+                        .ThenBy(p => p.ModName, StringComparer.OrdinalIgnoreCase)
+                    .ToList();
+                }
+                finally
+                {
+                    _currentBuildLocale.Value = null;
+                }
             });
         }
 
@@ -84,42 +94,51 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         #region Build
 
-        private void BuildInternal(HashSet<string> selectedSeriesKeys, CskPackBuildMode buildMode)
+        private void BuildInternal(HashSet<string> selectedSeriesKeys, CskPackBuildMode buildMode, string locale)
         {
-            var mods = GetMusicMods();
-            if (mods.Count == 0)
-                throw new InvalidOperationException("No music mods were found.");
-
-            var contexts = LoadModContexts(mods);
-            if (contexts.Count == 0)
-                throw new InvalidOperationException("No metadata_mod.json files were found in the currently loaded music mods.");
-
-            if (selectedSeriesKeys == null)
-            {
-                selectedSeriesKeys = contexts
-                    .SelectMany(context => context.SeriesList.Select(series => CreateSeriesKey(context.Mod, series)))
-                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
-            }
-
-            if (selectedSeriesKeys.Count == 0)
-                throw new InvalidOperationException("No CSK pack series were selected.");
-
-            var buildResources = LoadBuildResources();
-            var outputRoot = PrepareOutputRoot();
-            var tempRoot = Path.Combine(outputRoot, CskTempFolder);
+            _currentBuildLocale.Value = locale;
 
             try
             {
-                var generatedBgmFolder = GenerateBgmFiles(contexts, tempRoot, selectedSeriesKeys, buildResources.CoreGameOverride);
-                if (buildMode == CskPackBuildMode.Single)
-                    GenerateSingleCskPack(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
-                else
-                    GenerateCskPacks(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
+                var mods = GetMusicMods();
+                if (mods.Count == 0)
+                    throw new InvalidOperationException("No music mods were found.");
+
+                var contexts = LoadModContexts(mods);
+                if (contexts.Count == 0)
+                    throw new InvalidOperationException("No metadata_mod.json files were found in the currently loaded music mods.");
+
+                if (selectedSeriesKeys == null)
+                {
+                    selectedSeriesKeys = contexts
+                        .SelectMany(context => context.SeriesList.Select(series => CreateSeriesKey(context.Mod, series)))
+                        .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                }
+
+                if (selectedSeriesKeys.Count == 0)
+                    throw new InvalidOperationException("No CSK pack series were selected.");
+
+                var buildResources = LoadBuildResources();
+                var outputRoot = PrepareOutputRoot();
+                var tempRoot = Path.Combine(outputRoot, CskTempFolder);
+
+                try
+                {
+                    var generatedBgmFolder = GenerateBgmFiles(contexts, tempRoot, selectedSeriesKeys, buildResources.CoreGameOverride);
+                    if (buildMode == CskPackBuildMode.Single)
+                        GenerateSingleCskPack(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
+                    else
+                        GenerateCskPacks(contexts, generatedBgmFolder, outputRoot, selectedSeriesKeys, buildResources);
+                }
+                finally
+                {
+                    if (Directory.Exists(tempRoot))
+                        Directory.Delete(tempRoot, true);
+                }
             }
             finally
             {
-                if (Directory.Exists(tempRoot))
-                    Directory.Delete(tempRoot, true);
+                _currentBuildLocale.Value = null;
             }
         }
 
@@ -324,12 +343,12 @@ namespace Sma5h.Mods.Music.CskPackBuild
             return $"{Path.GetFullPath(mod.ModPath)}|{GetString(series, "ui_series_id")}|{GetString(series, "name_id")}";
         }
 
-        private static string GetSeriesDisplayName(JObject series)
+        private string GetSeriesDisplayName(JObject series)
         {
             var seriesName = GetString(series, "name_id");
-            var title = GetString(series["msbt_title"], "us_en");
+            var title = GetLocalizedString(series["msbt_title"]);
             if (string.IsNullOrWhiteSpace(title))
-                title = GetString(series["title"], "us_en");
+                title = GetLocalizedString(series["title"]);
 
             return string.IsNullOrWhiteSpace(title) ? seriesName : title;
         }

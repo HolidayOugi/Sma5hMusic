@@ -260,13 +260,13 @@ namespace Sma5h.Mods.Music.CskPackBuild
         {
             var seriesName = GetString(series, "name_id");
             var orderCounter = GetNextPlaylistOrder(seriesName, playlistData);
-            var seriesTitle = GetString(series["msbt_title"], "us_en", seriesName);
+            var seriesTitle = GetLocalizedString(series["msbt_title"], seriesName);
 
             if (coreSeriesOverride != null)
             {
                 var overrideEntry = coreSeriesOverride[GetString(series, "ui_series_id")] as JObject;
                 if (overrideEntry != null)
-                    seriesTitle = GetString(overrideEntry["msbt_title"], "us_en", seriesTitle);
+                    seriesTitle = GetLocalizedString(overrideEntry["msbt_title"], seriesTitle);
             }
 
             if (orderOverride != null || !VanillaSeries.Contains(seriesName) || seriesName.StartsWith("etc", StringComparison.OrdinalIgnoreCase))
@@ -295,7 +295,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 if (ShouldAddGameTitleEntry(effectiveGame, seriesName, coreGameSeriesById))
                     AddGameTitleEntry(songData, effectiveGame);
 
-                var gameTitle = GetString(effectiveGame["msbt_title"], "us_en", gameName);
+                var gameTitle = GetLocalizedString(effectiveGame["msbt_title"], gameName);
                 msgTitleEntries.Add(MakeEntry($"tit_{gameName}", EscapeXml(gameTitle)));
 
                 foreach (JObject bgm in GetArray(game, "bgms"))
@@ -379,13 +379,13 @@ namespace Sma5h.Mods.Music.CskPackBuild
                     ["duration_sample"] = GetInt(bgmProp, "total_samples", 0)
                 });
 
-                var titleText = GetString(db["msbt_title"], "us_en", nameId);
+                var titleText = GetLocalizedString(db["msbt_title"], nameId);
                 AddUniqueMessage(msgBgmEntries, $"bgm_title_{nameId}", titleText);
 
-                var authorText = GetString(db["msbt_author"], "us_en");
+                var authorText = GetLocalizedString(db["msbt_author"]);
                 AddUniqueMessage(msgBgmEntries, $"bgm_author_{nameId}", authorText);
 
-                var copyrightText = GetString(db["msbt_copyright"], "us_en");
+                var copyrightText = GetLocalizedString(db["msbt_copyright"]);
                 AddUniqueMessage(msgBgmEntries, $"bgm_copyright_{nameId}", copyrightText);
             }
 

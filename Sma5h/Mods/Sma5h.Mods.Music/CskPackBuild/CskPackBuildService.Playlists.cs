@@ -227,13 +227,13 @@ namespace Sma5h.Mods.Music.CskPackBuild
             entries.Add(MakeEntry(label, EscapeXml(text)));
         }
 
-        private static void AddOptionalBgmMessageUnique(List<string> entries, string label, JToken localizedText)
+        private void AddOptionalBgmMessageUnique(List<string> entries, string label, JToken localizedText)
         {
-            var text = GetString(localizedText, "us_en");
+            var text = GetLocalizedString(localizedText);
             AddUniqueMessage(entries, label, text);
         }
 
-        private static void AddOptionalBgmMessagesFromState(List<string> msgBgmEntries, BgmDbRootEntry db)
+        private void AddOptionalBgmMessagesFromState(List<string> msgBgmEntries, BgmDbRootEntry db)
         {
             if (db == null || string.IsNullOrEmpty(db.NameId))
                 return;
@@ -243,12 +243,15 @@ namespace Sma5h.Mods.Music.CskPackBuild
             AddOptionalLocalizedMessage(msgBgmEntries, $"bgm_copyright_{db.NameId}", db.Copyright);
         }
 
-        private static void AddOptionalLocalizedMessage(List<string> entries, string label, Dictionary<string, string> localizedText)
+        private void AddOptionalLocalizedMessage(List<string> entries, string label, Dictionary<string, string> localizedText)
         {
             if (localizedText == null)
                 return;
 
-            var text = localizedText.ContainsKey("us_en") ? localizedText["us_en"] : null;
+            var text = GetCskTextLocales()
+                .Where(localizedText.ContainsKey)
+                .Select(locale => localizedText[locale])
+                .FirstOrDefault(p => !string.IsNullOrWhiteSpace(p));
             if (!string.IsNullOrEmpty(text))
                 entries.Add(MakeEntry(label, EscapeXml(text)));
         }

@@ -29,7 +29,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
             foreach (var gameMeta in GetCoreGameMovedGames(series, metadata, coreGameOverride))
             {
-                var gameTitle = GetString(gameMeta["msbt_title"], "us_en", GetString(gameMeta, "name_id"));
+                var gameTitle = GetLocalizedString(gameMeta["msbt_title"], GetString(gameMeta, "name_id"));
                 msgTitleEntries.Add(MakeEntry($"tit_{GetString(gameMeta, "name_id")}", EscapeXml(gameTitle)));
 
                 foreach (JObject bgm in GetArray(gameMeta, "bgms"))
@@ -175,7 +175,7 @@ namespace Sma5h.Mods.Music.CskPackBuild
                     continue;
 
                 var game = coreGameOverride[uiGameTitleId] as JObject;
-                var gameTitle = GetString(game?["msbt_title"], "us_en", GetString(game?["msbt_title"], "eu_en"));
+                var gameTitle = GetLocalizedString(game?["msbt_title"]);
                 if (!string.IsNullOrEmpty(gameTitle))
                 {
                     var entryId = $"tit_{GetString(game, "name_id")}";

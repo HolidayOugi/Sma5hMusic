@@ -28,9 +28,9 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         #region Messages
 
-        private static void AddOptionalBgmMessage(List<string> entries, string label, JToken localizedText)
+        private void AddOptionalBgmMessage(List<string> entries, string label, JToken localizedText)
         {
-            var text = GetString(localizedText, "us_en");
+            var text = GetLocalizedString(localizedText);
             if (!string.IsNullOrEmpty(text))
                 entries.Add(MakeEntry(label, EscapeXml(text)));
         }
@@ -80,6 +80,38 @@ namespace Sma5h.Mods.Music.CskPackBuild
                 return fallback;
 
             return value.ToString();
+        }
+
+        private string GetLocalizedString(JToken localizedText, string fallback = "")
+        {
+            if (localizedText == null)
+                return fallback;
+
+            foreach (var locale in GetCskTextLocales())
+            {
+                var text = GetString(localizedText, locale);
+                if (!string.IsNullOrWhiteSpace(text))
+                    return text;
+            }
+
+            return fallback;
+        }
+
+        private IEnumerable<string> GetCskTextLocales()
+        {
+            var configuredLocales = new[]
+            {
+                _currentBuildLocale.Value,
+                _config.CurrentValue.Sma5hMusicGUI?.DefaultMSBTLocale,
+                _config.CurrentValue.Sma5hMusic?.DefaultLocale,
+                _config.CurrentValue.Sma5hMusicGUI?.DefaultGUILocale,
+                "us_en",
+                "eu_en"
+            };
+
+            return configuredLocales
+                .Where(p => !string.IsNullOrWhiteSpace(p))
+                .Distinct(StringComparer.OrdinalIgnoreCase);
         }
 
         private static int GetInt(JToken token, string key, int fallback)

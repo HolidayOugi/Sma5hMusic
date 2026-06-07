@@ -8,6 +8,14 @@ namespace Sma5h.Mods.Music.CskPackBuild
 
         public Sma5hMusicOptions.Sma5hMusicOptionsSection Sma5hMusic { get; set; }
 
+        public CskPackBuildGuiOptionsSection Sma5hMusicGUI { get; set; }
+
         #endregion
+
+        public class CskPackBuildGuiOptionsSection
+        {
+            public string DefaultGUILocale { get; set; }
+            public string DefaultMSBTLocale { get; set; }
+        }
     }
 }
