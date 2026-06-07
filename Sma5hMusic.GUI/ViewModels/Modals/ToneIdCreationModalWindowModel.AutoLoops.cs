@@ -60,7 +60,6 @@ namespace Sma5hMusic.GUI.ViewModels
 
                     _logger.LogInformation("pymusiclooper did not return any valid loop points for {Filename}.", Filename);
                     AutoLoopStatus = "No automatic loop points found.";
-                    await _messageDialog.ShowInformation("No loop points found", "pymusiclooper did not find any usable loop points for this audio file.");
                     return;
                 }
 

@@ -254,8 +254,20 @@ namespace Sma5hMusic.GUI.Services
             {
                 var trimmedLine = line.Trim();
 
-                var values = Regex.Matches(trimmedLine, @"[-+]?\d+(?:[.,]\d+)?")
-                    .Cast<Match>()
+                var candidateMatch = Regex.Match(
+                    trimmedLine,
+                    @"^\s*[\[\(\{]?\s*(\d+)\s*[,;\t ]+\s*(\d+)(?:\s*[,;\t ]+\s*([-+]?\d+(?:[.,]\d+)?))?(?:\s*[,;\t ]+\s*([-+]?\d+(?:[.,]\d+)?))?(?:\s*[,;\t ]+\s*([-+]?\d+(?:[.,]\d+)?))?\s*[\]\)\}]?\s*$");
+
+                if (!candidateMatch.Success)
+                {
+                    skippedNonDataLines++;
+                    continue;
+                }
+
+                var values = candidateMatch.Groups
+                    .Cast<Group>()
+                    .Skip(1)
+                    .Where(p => p.Success)
                     .Select(p => p.Value.Replace(',', '.'))
                     .ToList();
 
@@ -272,7 +284,8 @@ namespace Sma5hMusic.GUI.Services
                     continue;
                 }
 
-                if (loopEndSample == 0 || loopStartSample > loopEndSample || loopEndSample > totalSamples)
+                var minimumLoopLengthSamples = Math.Max(1u, sampleRate / 10);
+                if (loopEndSample == 0 || loopStartSample >= loopEndSample || loopEndSample > totalSamples || loopEndSample - loopStartSample < minimumLoopLengthSamples)
                 {
                     skippedInvalidSampleLines++;
                     continue;
