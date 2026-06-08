@@ -1,4 +1,4 @@
-# <img src="Sma5hMusic.GUI/sma5hmusic-logo.ico" alt="Icon" width="70" height="70" style="vertical-align: -0.4em;"> Sma5hMusic Extra
+# Sma5hMusic Extra
 
 This is a fork of [Sma5shMusic by Deinonychus71](https://github.com/Deinonychus71/Sma5hMusic) that adds extra functionality to the original executable.
 
