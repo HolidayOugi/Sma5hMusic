@@ -2,6 +2,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sma5h.Attributes;
+using Sma5h.Interfaces;
 using Sma5h.ResourceProviders.Prc.Helpers;
 using System;
 using System.Collections.Generic;
@@ -15,21 +16,29 @@ namespace Sma5h.ResourceProviders
     {
         private readonly ILogger _logger;
         private readonly PrcHelper _prc;
+        private readonly Dictionary<ulong, string> _paramHashes;
 
         public PrcResourceProvider(IOptionsMonitor<Sma5hOptions> config, ILogger<PrcResourceProvider> logger)
             : base(config)
         {
             _logger = logger;
             var inputFileParamLabels = Path.Combine(config.CurrentValue.ResourcesPath, "ParamLabels.csv");
-            _prc = new PrcHelper(GetParamLabels(inputFileParamLabels));
+            _paramHashes = GetParamLabels(inputFileParamLabels);
+            _prc = new PrcHelper(_paramHashes);
         }
 
         public override T ReadFile<T>(string inputFile)
         {
+            return ReadFile<T>(inputFile, false);
+        }
+
+        public T ReadFile<T>(string inputFile, bool ignoreUnknownFilters) where T : IStateManagerDb, new()
+        {
             try
             {
                 _logger.LogDebug("Reading prc file {InputFile}", inputFile);
-                return _prc.ReadPrcFile<T>(inputFile);
+                var prc = ignoreUnknownFilters ? new PrcHelper(_paramHashes, true) : _prc;
+                return prc.ReadPrcFile<T>(inputFile);
             }
             catch (Exception e)
             {

@@ -94,6 +94,9 @@
         <MenuItem Header="Sort Songs Alphabetically by Game"
                   ToolTip.Tip="Sorts selected games alphabetically."
                   Command="{Binding ActionSortSongsAlphabeticallyByGame}"></MenuItem>
+        <MenuItem Header="Generate Mod from Build"
+                  ToolTip.Tip="Creates a new music mod from an already built output folder."
+                  Command="{Binding ActionGenerateModFromBuildFiles}"></MenuItem>
       </MenuItem>
       <MenuItem Header="Settings">
         <MenuItem Header="Show Advanced BGM Options" Command="{Binding ActionToggleAdvanced}">

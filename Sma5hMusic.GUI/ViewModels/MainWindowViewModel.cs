@@ -35,6 +35,7 @@ namespace Sma5hMusic.GUI.ViewModels
         private readonly IFileDialog _fileDialog;
         private readonly IDialogWindow _rootDialog;
         private readonly IBuildDialog _buildDialog;
+        private readonly IMusicModReverseService _musicModReverseService;
         private readonly IOptionsMonitor<ApplicationSettings> _appSettings;
         private readonly ILogger _logger;
         private readonly IMapper _mapper;
@@ -90,13 +91,14 @@ namespace Sma5hMusic.GUI.ViewModels
         public ReactiveCommand<Unit, Unit> ActionAdjustModSongVolumes { get; }
         public ReactiveCommand<Unit, Unit> ActionSetModSongVolumes { get; }
         public ReactiveCommand<Unit, Unit> ActionSortSongsAlphabeticallyByGame { get; }
+        public ReactiveCommand<Unit, Unit> ActionGenerateModFromBuildFiles { get; }
         public ReactiveCommand<bool, Unit> ActionUpdateBgmSelector { get; }
         public ReactiveCommand<string, Unit> ActionResetModOverrideFile { get; }
         public ReactiveCommand<bool, Unit> ActionBackupProject { get; }
 
 
         public MainWindowViewModel(IServiceProvider serviceProvider, IViewModelManager viewModelManager, IGUIStateManager guiStateManager, IMapper mapper, IVGMMusicPlayer musicPlayer,
-               IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, INus3AudioBatchNormalizationService nus3AudioBatchNormalizationService, IYoutubeImportService youtubeImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
+               IDialogWindow rootDialog, IMessageDialog messageDialog, IFileDialog fileDialog, IAudioImportService audioImportService, INus3AudioBatchNormalizationService nus3AudioBatchNormalizationService, IYoutubeImportService youtubeImportService, IBuildDialog buildDialog, ICskPackBuildService cskPackBuildService, IMusicModReverseService musicModReverseService, IOptionsMonitor<ApplicationSettings> appSettings, IDevToolsService devTools, ILogger<MainWindowViewModel> logger)
         {
             _viewModelManager = viewModelManager;
             _guiStateManager = guiStateManager;
@@ -107,6 +109,7 @@ namespace Sma5hMusic.GUI.ViewModels
             _youtubeImportService = youtubeImportService;
             _buildDialog = buildDialog;
             _cskPackBuildService = cskPackBuildService;
+            _musicModReverseService = musicModReverseService;
             _messageDialog = messageDialog;
             _rootDialog = rootDialog;
             _logger = logger;
@@ -223,6 +226,7 @@ namespace Sma5hMusic.GUI.ViewModels
             ActionAdjustModSongVolumes = ReactiveCommand.CreateFromTask(AdjustModSongVolumes);
             ActionSetModSongVolumes = ReactiveCommand.CreateFromTask(SetModSongVolumes);
             ActionSortSongsAlphabeticallyByGame = ReactiveCommand.CreateFromTask(SortSongsAlphabeticallyByGame);
+            ActionGenerateModFromBuildFiles = ReactiveCommand.CreateFromTask(GenerateModFromBuildFiles);
             ActionUpdateBgmSelector = ReactiveCommand.CreateFromTask<bool>((enabled) => UpdateBgmSelector(enabled));
             ActionResetModOverrideFile = ReactiveCommand.CreateFromTask<string>((file) => ResetModOverrideFile(file));
             ActionBackupProject = ReactiveCommand.CreateFromTask<bool>((fullBackup) => _guiStateManager.BackupProject(fullBackup));

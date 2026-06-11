@@ -39,7 +39,7 @@ namespace Sma5h.Mods.Music.Services
             _bgmPropertyProvider = resourceProviders.OfType<BgmPropertyProvider>().First();
         }
 
-        public MusicModConfig Reverse(string coreResourcesPath, string outputPath, string modOutputPath, string modName = null)
+        public MusicModConfig Reverse(string coreResourcesPath, string outputPath, string modOutputPath, string modName = null, MusicModInformation modInformation = null)
         {
             if (string.IsNullOrWhiteSpace(coreResourcesPath))
                 throw new ArgumentException("Core resources path is required.", nameof(coreResourcesPath));
@@ -56,7 +56,12 @@ namespace Sma5h.Mods.Music.Services
 
             var metadata = new MusicModConfig(Guid.NewGuid().ToString())
             {
-                Name = string.IsNullOrWhiteSpace(modName) ? Path.GetFileName(Path.TrimEndingDirectorySeparator(modOutputPath)) : modName,
+                Name = !string.IsNullOrWhiteSpace(modInformation?.Name)
+                    ? modInformation.Name
+                    : string.IsNullOrWhiteSpace(modName) ? Path.GetFileName(Path.TrimEndingDirectorySeparator(modOutputPath)) : modName,
+                Author = modInformation?.Author,
+                Website = modInformation?.Website,
+                Description = modInformation?.Description,
                 Series = new List<SeriesConfig>()
             };
 
@@ -146,10 +151,23 @@ namespace Sma5h.Mods.Music.Services
 
         private ResourceSnapshot LoadSnapshot(string rootPath)
         {
-            var bgmDb = _prcProvider.ReadFile<PrcUiBgmDatabase>(Path.Combine(rootPath, PrcExtConstants.PRC_UI_BGM_DB_PATH));
-            var gameTitleDb = _prcProvider.ReadFile<PrcUiGameTitleDatabase>(Path.Combine(rootPath, PrcExtConstants.PRC_UI_GAMETITLE_DB_PATH));
-            var seriesDb = _prcProvider.ReadFile<PrcUiSeriesDatabase>(Path.Combine(rootPath, PrcExtConstants.PRC_UI_SERIES_DB_PATH));
-            var bgmProperty = _bgmPropertyProvider.ReadFile<BinBgmProperty>(Path.Combine(rootPath, BgmPropertyFileConstants.BGM_PROPERTY_PATH));
+            var bgmDbPath = Path.Combine(rootPath, PrcExtConstants.PRC_UI_BGM_DB_PATH);
+            var gameTitleDbPath = Path.Combine(rootPath, PrcExtConstants.PRC_UI_GAMETITLE_DB_PATH);
+            var seriesDbPath = Path.Combine(rootPath, PrcExtConstants.PRC_UI_SERIES_DB_PATH);
+            var bgmPropertyPath = Path.Combine(rootPath, BgmPropertyFileConstants.BGM_PROPERTY_PATH);
+
+            EnsureSnapshotFileExists(bgmDbPath);
+            EnsureSnapshotFileExists(gameTitleDbPath);
+            EnsureSnapshotFileExists(seriesDbPath);
+            EnsureSnapshotFileExists(bgmPropertyPath);
+
+            var bgmDb = _prcProvider.ReadFile<PrcUiBgmDatabase>(bgmDbPath, true);
+            var gameTitleDb = _prcProvider.ReadFile<PrcUiGameTitleDatabase>(gameTitleDbPath);
+            var seriesDb = _prcProvider.ReadFile<PrcUiSeriesDatabase>(seriesDbPath);
+            var bgmProperty = _bgmPropertyProvider.ReadFile<BinBgmProperty>(bgmPropertyPath);
+
+            if (bgmDb == null || gameTitleDb == null || seriesDb == null || bgmProperty == null)
+                throw new InvalidOperationException($"Could not read required music resources from {rootPath}.");
 
             var snapshot = new ResourceSnapshot();
             var bgmMsbts = LoadMsbtDatabases(rootPath, MsbtExtConstants.MSBT_BGM);
@@ -244,6 +262,12 @@ namespace Sma5h.Mods.Music.Services
             }
 
             return snapshot;
+        }
+
+        private static void EnsureSnapshotFileExists(string file)
+        {
+            if (!File.Exists(file))
+                throw new FileNotFoundException($"Required music resource file was not found: {file}", file);
         }
 
         private Dictionary<string, MsbtDatabase> LoadMsbtDatabases(string rootPath, string resourcePattern)

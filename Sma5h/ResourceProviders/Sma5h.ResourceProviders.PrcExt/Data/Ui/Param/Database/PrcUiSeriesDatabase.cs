@@ -22,13 +22,13 @@ namespace Sma5h.Data.Ui.Param.Database
             public string NameId { get; set; }
 
             [PrcHexMapping("disp_order")]
-            public sbyte DispOrder { get; set; }
+            public short DispOrder { get; set; }
 
             [PrcHexMapping("disp_order_sound")]
-            public sbyte DispOrderSound { get; set; }
+            public short DispOrderSound { get; set; }
 
             [PrcHexMapping("save_no")]
-            public sbyte SaveNo { get; set; }
+            public short SaveNo { get; set; }
 
             [PrcHexMapping(0x1c38302364)]
             public bool Unk1 { get; set; }

@@ -12,10 +12,12 @@ namespace Sma5h.ResourceProviders.Prc.Helpers
     public class PrcHelper
     {
         private readonly Dictionary<ulong, string> _paramHashes;
+        private readonly bool _ignoreUnknownFilters;
 
-        public PrcHelper(Dictionary<ulong, string> paramHashes)
+        public PrcHelper(Dictionary<ulong, string> paramHashes, bool ignoreUnknownFilters = false)
         {
             _paramHashes = paramHashes;
+            _ignoreUnknownFilters = ignoreUnknownFilters;
         }
 
         public T ReadPrcFile<T>(string inputFile) where T : new()
@@ -70,7 +72,12 @@ namespace Sma5h.ResourceProviders.Prc.Helpers
                     var filtersRegex = MapOffsetToRegexFilters(objType);
 
                     if (filtersRegex.Count == 0 || _paramHashes == null || !_paramHashes.ContainsKey(node.Key))
+                    {
+                        if (_ignoreUnknownFilters && filtersRegex.Count > 0)
+                            continue;
+
                         throw new Exception($"Hex 0x{node.Key:X} was not mapped to any property.");
+                    }
 
                     var keyString = _paramHashes[node.Key];
 
@@ -86,7 +93,12 @@ namespace Sma5h.ResourceProviders.Prc.Helpers
                     }
 
                     if (propertyInfo == null)
+                    {
+                        if (_ignoreUnknownFilters)
+                            continue;
+
                         throw new Exception($"Hex 0x{node.Key:X} was not mapped to any property.");
+                    }
                 }
             }
         }
