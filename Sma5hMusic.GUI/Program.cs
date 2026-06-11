@@ -3,6 +3,7 @@ using Avalonia.ReactiveUI;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NReco.Logging.File;
 using Sma5h.Mods.Music;
 using Sma5hMusic.GUI.Dialogs;
 using Sma5hMusic.GUI.Helpers;
@@ -97,7 +98,7 @@ namespace Sma5hMusic.GUI
             services.AddSingleton<IBuildDialog, BuildDialog>();
             services.AddSingleton<IViewModelManager, ViewModelManager>();
             services.AddSingleton<IGUIStateManager, GUIStateManager>();
-            services.AddAutoMapper(typeof(MappingViewModels));
+            services.AddAutoMapper(_ => { }, typeof(MappingViewModels).Assembly);
 
             //Add to Splat
             services.UseMicrosoftDependencyResolver();

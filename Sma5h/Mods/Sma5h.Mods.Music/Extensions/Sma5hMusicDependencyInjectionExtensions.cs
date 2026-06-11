@@ -27,7 +27,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<IVGMMusicPlayer, VGMMusicPlayer>();
             services.AddSingleton<INus3AudioService, Nus3AudioService>();
             services.AddSingleton<ICskPackBuildService, CskPackBuildService>();
-            services.AddAutoMapper(typeof(MappingDb), typeof(MappingMusicModConfig));
+            services.AddAutoMapper(_ => { }, typeof(MappingDb).Assembly, typeof(MappingMusicModConfig).Assembly);
             return services;
         }
 
@@ -38,7 +38,7 @@ namespace Microsoft.Extensions.DependencyInjection
             services.AddSingleton<ISma5hMod, Sma5hMusicOverride>((o) => o.GetRequiredService<ISma5hMusicOverride>() as Sma5hMusicOverride);
             services.AddSingleton<IResourceProvider, PrcResourceProvider>();
             services.AddSingleton<IAudioStateService, AudioStateService>();
-            services.AddAutoMapper(typeof(MappingDb), typeof(MappingOverrideConfig));
+            services.AddAutoMapper(_ => { }, typeof(MappingDb).Assembly, typeof(MappingOverrideConfig).Assembly);
             return services;
         }
     }

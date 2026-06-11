@@ -22,9 +22,9 @@ namespace Sma5hMusic.GUI.Dialogs
         {
             _logger = logger;
             _rootDialogWindow = rootDialogWindow;
-            _style = 
+            _style =
                 appSettings.CurrentValue.Sma5hMusicGUI.UITheme == Helpers.StylesHelper.UITheme.WindowsDark ||
-                appSettings.CurrentValue.Sma5hMusicGUI.UITheme == Helpers.StylesHelper.UITheme.Dark  ? 
+                appSettings.CurrentValue.Sma5hMusicGUI.UITheme == Helpers.StylesHelper.UITheme.Dark ?
                 Style.DarkMode : Style.Windows;
         }
 
