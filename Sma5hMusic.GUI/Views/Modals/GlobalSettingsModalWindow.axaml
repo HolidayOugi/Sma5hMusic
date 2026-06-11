@@ -3,7 +3,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
-        Height="720" MinHeight="720"
+        Height="760" MinHeight="760"
         x:Class="Sma5hMusic.GUI.Views.GlobalSettingsModalWindow"
         xmlns:fields="clr-namespace:Sma5hMusic.GUI.Views.Fields"
         Classes="globalSettings" ShowInTaskbar="False" Title="Global Settings">
@@ -145,6 +145,13 @@
           <Grid ColumnDefinitions="*,*">
             <fields:PropertyBooleanField Grid.Column="0" Label="[EXP.] In-Game Volume" IsChecked="{Binding SelectedItem.InGameVolume}" ToolTip="If turned on, the volume parameter of each song will be used to try to get an accurate playback of how loud a song will be in-game. Typically used to normalize songs from within the GUI." />
             <Button Grid.Column="1" Margin="10,10,0,0" Content="Wipe Audio Cache" Command="{Binding ActionWipeAudioCache}"/>
+          </Grid>
+          <Grid ColumnDefinitions="*,*">
+            <fields:PropertyField Grid.Column="0" Label="Default Song Volume" ToolTip="Volume when adding a new song.">
+              <fields:PropertyField.FieldContent>
+                <NumericUpDown Value="{Binding SelectedItem.DefaultSongVolume, Mode=TwoWay}" Minimum="-20" Maximum="20" Increment="0.1" FormatString="0.0"/>
+              </fields:PropertyField.FieldContent>
+            </fields:PropertyField>
           </Grid>
           <Grid ColumnDefinitions="*,*">
             <fields:PropertyField Grid.Column="0" Label="Normalization LUFS" ToolTip="Target LUFS value used when applying audio normalization before importing. Default is 14.">

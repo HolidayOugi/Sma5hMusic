@@ -85,9 +85,9 @@ namespace Sma5hMusic.GUI.ViewModels
             ApplyNormalization = false;
             CanApplyNormalization = true;
 
-            WindowHeight = 920;
-            WindowWidth = 980;
-            WindowMinWidth = 900;
+            WindowHeight = 950;
+            WindowWidth = 1020;
+            WindowMinWidth = 940;
             SampleRate = sampleRate;
             TotalSamples = totalSamples;
             TotalTimeMs = SamplesToMs(totalSamples);

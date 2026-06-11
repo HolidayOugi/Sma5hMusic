@@ -1762,7 +1762,7 @@ namespace Sma5hMusic.GUI.Services
 
         private MusicModEntries CreateNewMusicModEntriesSet(string toneId, string filename, IMusicMod musicMod)
         {
-            var newBgmPropertyEntry = new BgmPropertyEntry(toneId, filename, musicMod);
+            var newBgmPropertyEntry = new BgmPropertyEntry(toneId, filename, musicMod) { AudioVolume = GetDefaultSongVolume() };
             var newBgmStreamPropertyEntry = new BgmStreamPropertyEntry($"{MusicConstants.InternalIds.STREAM_PREFIX}{toneId}", musicMod) { DataName0 = newBgmPropertyEntry.NameId };
             var newBgmAssignedInfoEntry = new BgmAssignedInfoEntry($"{MusicConstants.InternalIds.INFO_ID_PREFIX}{toneId}", musicMod) { StreamId = newBgmStreamPropertyEntry.StreamId };
             var newBgmStreamSetEntry = new BgmStreamSetEntry($"{MusicConstants.InternalIds.STREAM_SET_PREFIX}{toneId}", musicMod) { Info0 = newBgmAssignedInfoEntry.InfoId };
@@ -1778,6 +1778,16 @@ namespace Sma5hMusic.GUI.Services
             musicModEntries.BgmPropertyEntries.Add(newBgmPropertyEntry);
 
             return musicModEntries;
+        }
+
+        private float GetDefaultSongVolume()
+        {
+            var volume = (decimal)_config.CurrentValue.Sma5hMusicGUI.DefaultSongVolume;
+
+            return (float)Math.Clamp(
+                Math.Round(volume, 1, MidpointRounding.AwayFromZero),
+                (decimal)Helpers.Constants.MinimumGameVolume,
+                (decimal)Helpers.Constants.MaximumGameVolume);
         }
 
         public async Task<bool> BackupProject(bool fullBackup, bool showConfirm = true)

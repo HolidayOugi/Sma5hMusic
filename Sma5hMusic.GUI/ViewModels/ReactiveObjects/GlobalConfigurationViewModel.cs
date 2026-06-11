@@ -1,6 +1,9 @@
 ﻿using AutoMapper;
 using ReactiveUI.Fody.Helpers;
+using ReactiveUI;
 using Sma5h.Mods.Music;
+using Sma5hMusic.GUI.Helpers;
+using System;
 using System.Collections.Generic;
 
 namespace Sma5hMusic.GUI.ViewModels
@@ -25,6 +28,16 @@ namespace Sma5hMusic.GUI.ViewModels
 
         [Reactive]
         public ushort PlaylistIncidenceDefault { get; set; }
+        private decimal _defaultSongVolume;
+        public decimal DefaultSongVolume
+        {
+            get => _defaultSongVolume;
+            set => this.RaiseAndSetIfChanged(
+                ref _defaultSongVolume,
+                Math.Clamp(Math.Round(value, 1, MidpointRounding.AwayFromZero),
+                    (decimal)Constants.MinimumGameVolume,
+                    (decimal)Constants.MaximumGameVolume));
+        }
         [Reactive]
         public bool CopyToEmptyLocales { get; set; }
         [Reactive]

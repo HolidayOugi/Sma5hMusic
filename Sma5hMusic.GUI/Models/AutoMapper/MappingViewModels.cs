@@ -41,6 +41,7 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                     DefaultMSBTLocale = p.DefaultMSBTLocale,
                     CopyToEmptyLocales = p.CopyToEmptyLocales,
                     PlaylistIncidenceDefault = p.PlaylistIncidenceDefault,
+                    DefaultSongVolume = (double)p.DefaultSongVolume,
                     SkipWarningGameVersion = p.SkipWarningGameVersion,
                     AutoBackupAtStart = p.AutoBackupAtStart,
                     InGameVolume = p.InGameVolume,
@@ -82,6 +83,7 @@ namespace Sma5hMusic.GUI.Mods.Music.Models.AutoMapper
                 .ForMember(i => i.DefaultMSBTLocale, me => me.MapFrom(p => p.Sma5hMusicGUI.DefaultMSBTLocale))
                 .ForMember(i => i.CopyToEmptyLocales, me => me.MapFrom(p => p.Sma5hMusicGUI.CopyToEmptyLocales))
                 .ForMember(i => i.PlaylistIncidenceDefault, me => me.MapFrom(p => p.Sma5hMusicGUI.PlaylistIncidenceDefault))
+                .ForMember(i => i.DefaultSongVolume, me => me.MapFrom(p => (decimal)p.Sma5hMusicGUI.DefaultSongVolume))
                 .ForMember(i => i.SkipWarningGameVersion, me => me.MapFrom(p => p.Sma5hMusicGUI.SkipWarningGameVersion))
                 .ForMember(i => i.AutoBackupAtStart, me => me.MapFrom(p => p.Sma5hMusicGUI.AutoBackupAtStart))
                 .ForMember(i => i.InGameVolume, me => me.MapFrom(p => p.Sma5hMusicGUI.InGameVolume))
