@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Console;
 using System;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace Sma5h.CLI
@@ -21,6 +22,9 @@ namespace Sma5h.CLI
                 Script entry = scope.ServiceProvider.GetService<Script>();
                 await entry.Run();
             }
+
+            if (args.Any(p => p.Contains("Mode=ReverseMusicMod", StringComparison.OrdinalIgnoreCase)))
+                return;
 
             await Task.Delay(1000);
             Console.WriteLine("The program has completed its task. Press enter to exit");
@@ -45,7 +49,7 @@ namespace Sma5h.CLI
 
             services.AddLogging();
             services.AddOptions();
-            services.AddSingleton(configuration);
+            services.AddSingleton<IConfiguration>(configuration);
             services.AddSingleton(loggerFactory);
 
             //Sma5h Core
