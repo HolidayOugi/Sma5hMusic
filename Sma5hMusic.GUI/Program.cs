@@ -92,6 +92,7 @@ namespace Sma5hMusic.GUI
             services.AddSingleton<IAudioImportService, AudioImportService>();
             services.AddSingleton<INus3AudioBatchNormalizationService, Nus3AudioBatchNormalizationService>();
             services.AddSingleton<IYoutubeImportService, YoutubeImportService>();
+            services.AddSingleton<ISongSpreadsheetService, SongSpreadsheetService>();
             services.AddSingleton<IFileDialog, FileDialog>();
             services.AddSingleton<IMessageDialog, MessageDialog>();
             services.AddSingleton<IBuildDialog, BuildDialog>();

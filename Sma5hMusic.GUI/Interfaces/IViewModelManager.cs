@@ -26,6 +26,7 @@ namespace Sma5hMusic.GUI.Interfaces
         IObservableCache<PlaylistEntryViewModel, string> ObservablePlaylistsEntries { get; }
         IObservableCache<StageEntryViewModel, string> ObservableStagesEntries { get; }
 
+        IEnumerable<ModEntryViewModel> GetModsViewModels();
         IEnumerable<LocaleViewModel> GetLocalesViewModels();
         IEnumerable<SeriesEntryViewModel> GetSeriesViewModels();
         IEnumerable<GameTitleEntryViewModel> GetGameTitlesViewModels();

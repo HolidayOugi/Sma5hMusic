@@ -13,6 +13,7 @@ namespace Sma5hMusic.GUI.Interfaces
         Task<string> OpenFileDialogYoutubeLinksText(Window parent = null);
         Task<string> OpenFolderDialog(Window parent = null);
         Task<string> SaveFileCSVDialog(Window parent = null);
+        Task<string> SaveFileSpreadsheetDialog(string defaultFileName, Window parent = null);
         void OpenFolder(string folderPath);
     }
 }

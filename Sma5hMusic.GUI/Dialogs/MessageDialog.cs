@@ -44,6 +44,21 @@ namespace Sma5hMusic.GUI.Dialogs
             return result == ButtonResult.Ok;
         }
 
+        public async Task ShowWarning(string title, string message)
+        {
+            _logger.LogWarning("Showing Warning: {Title} - {Message}", title, message);
+            var msBoxStandardWindow = MessageBoxManager.GetMessageBoxStandardWindow(new MessageBoxStandardParams
+            {
+                ButtonDefinitions = ButtonEnum.Ok,
+                WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
+                ContentTitle = title,
+                ContentMessage = message,
+                Icon = Icon.Warning,
+                Style = _style
+            });
+            await msBoxStandardWindow.ShowDialog(_rootDialogWindow.Window);
+        }
+
         public async Task ShowError(string title, string message, Exception e = null)
         {
             if (e != null)
@@ -62,10 +77,10 @@ namespace Sma5hMusic.GUI.Dialogs
             await msBoxStandardWindow.ShowDialog(_rootDialogWindow.Window);
         }
 
-        public async Task ShowInformation(string title, string message)
+        public async Task ShowInformation(string title, string message, int maxWidth = 0)
         {
             _logger.LogDebug("Showing Information: {Title} - {Message}", title, message);
-            var msBoxStandardWindow = MessageBoxManager.GetMessageBoxStandardWindow(new MessageBoxStandardParams
+            var messageBoxParams = new MessageBoxStandardParams
             {
                 ButtonDefinitions = ButtonEnum.Ok,
                 WindowStartupLocation = Avalonia.Controls.WindowStartupLocation.CenterOwner,
@@ -73,7 +88,11 @@ namespace Sma5hMusic.GUI.Dialogs
                 ContentMessage = message,
                 Icon = Icon.Info,
                 Style = _style
-            });
+            };
+            if (maxWidth > 0)
+                messageBoxParams.MaxWidth = maxWidth;
+
+            var msBoxStandardWindow = MessageBoxManager.GetMessageBoxStandardWindow(messageBoxParams);
             await msBoxStandardWindow.ShowDialog(_rootDialogWindow.Window);
         }
 

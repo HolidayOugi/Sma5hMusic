@@ -196,6 +196,11 @@ namespace Sma5hMusic.GUI.Services
         #endregion
 
         #region GET ALL
+        public IEnumerable<ModEntryViewModel> GetModsViewModels()
+        {
+            return _vmDictModsEntries.Values;
+        }
+
         public IEnumerable<LocaleViewModel> GetLocalesViewModels()
         {
             return _vmDictLocalesEntries.Values;

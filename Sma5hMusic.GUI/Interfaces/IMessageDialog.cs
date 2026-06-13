@@ -6,8 +6,9 @@ namespace Sma5hMusic.GUI.Interfaces
     public interface IMessageDialog
     {
         Task<bool> ShowWarningConfirm(string title, string message);
+        Task ShowWarning(string title, string message);
         Task ShowError(string title, string message, Exception e = null);
-        Task ShowInformation(string title, string message);
+        Task ShowInformation(string title, string message, int maxWidth = 0);
         Task<string> PromptInput(string title, string message);
     }
 }

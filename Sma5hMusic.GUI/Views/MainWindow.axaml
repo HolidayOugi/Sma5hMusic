@@ -82,6 +82,19 @@
         <MenuItem Header="Build CSK Metadata only"
                   ToolTip.Tip="Builds modular CSK pack metadata for all series without any BGM files."
                   Command="{Binding ActionBuildCskMetadataOnly}"></MenuItem>
+        <Separator></Separator>
+        <MenuItem Header="Create Song Spreadsheet">
+          <MenuItem Header="Song List"
+                    Command="{Binding ActionCreateSongSpreadsheet}"
+                    CommandParameter="SongList"></MenuItem>
+          <MenuItem Header="Pinch Songs"
+                    Command="{Binding ActionCreateSongSpreadsheet}"
+                    CommandParameter="PinchSongs"></MenuItem>
+          <MenuItem Header="Main Menu"
+                    Command="{Binding ActionCreateSongSpreadsheet}"
+                    CommandParameter="MainMenu"></MenuItem>
+        </MenuItem>
+        <Separator></Separator>
         <MenuItem Header="Normalize Songs in all Mods"
                   ToolTip.Tip="Normalizes every song in every mod."
                   Command="{Binding ActionNormalizeNus3AudioFiles}"></MenuItem>
@@ -91,6 +104,7 @@
         <MenuItem Header="Set Volume for all Songs"
                   ToolTip.Tip="Sets every song volume in every mod to the same value."
                   Command="{Binding ActionSetModSongVolumes}"></MenuItem>
+        <Separator></Separator>
         <MenuItem Header="Sort Songs Alphabetically by Game"
                   ToolTip.Tip="Sorts selected games alphabetically."
                   Command="{Binding ActionSortSongsAlphabeticallyByGame}"></MenuItem>

@@ -262,6 +262,34 @@ namespace Sma5hMusic.GUI.Dialogs
             return result;
         }
 
+        public async Task<string> SaveFileSpreadsheetDialog(string defaultFileName, Window parent = null)
+        {
+            _logger.LogDebug("Opening spreadsheet SaveDialog...");
+
+            _saveFileDialog.Directory = _savedSaveFileDirectory;
+            _saveFileDialog.InitialFileName = defaultFileName;
+            _saveFileDialog.Filters = new List<FileDialogFilter>()
+            {
+                new FileDialogFilter()
+                {
+                    Extensions = new List<string>() { "xlsx" },
+                    Name = "Excel Workbook"
+                }
+            };
+            _saveFileDialog.Title = "Save Song Spreadsheet";
+
+            string result;
+            if (parent == null)
+                result = await _saveFileDialog.ShowAsync(_rootDialogWindow.Window);
+            else
+                result = await _saveFileDialog.ShowAsync(parent);
+
+            if (!string.IsNullOrEmpty(result))
+                _savedSaveFileDirectory = Path.GetDirectoryName(result);
+
+            return result;
+        }
+
         public async Task<string> OpenFolderDialog(Window parent = null)
         {
             _logger.LogDebug("Opening FolderDialog...");
